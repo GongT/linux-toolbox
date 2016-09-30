@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# todo not here
+repoquery --installed --all $*

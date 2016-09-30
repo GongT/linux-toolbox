@@ -1,0 +1,6 @@
+#!/bin/sh
+
+for FILE in ${MY_SCRIPT_ROOT}/applications/*.sh
+do
+	source ${FILE}
+done

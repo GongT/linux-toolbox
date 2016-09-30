@@ -1,0 +1,46 @@
+#!/bin/sh
+
+OPDIR="$2"
+
+case $1 in
+del)
+	PATH_ARR="$(echo "$PATH" | sed 's/:/\n/g')"
+	if echo "${PATH_ARR}" | grep -qE "^${OPDIR}$" ; then
+		export PATH="$(
+			echo "${PATH_ARR}" | grep -vE "^${OPDIR}$" | tr '\n' ':' | sed -e 's/:$//'
+		)"
+	else
+		echo "nothing deleted" >&2
+		return 1
+	fi
+	;;
+add)
+	if stat "${OPDIR}" &>/dev/null; then
+		export PATH="$PATH:`realpath "${OPDIR}"`"
+	else
+		echo "no such dir: ${OPDIR}" >&2
+		return 1
+	fi
+	;;
+add-rel)
+	export PATH="$PATH:${OPDIR}"
+	;;
+list)
+	echo "$PATH" | sed 's/:/\n/g'
+	;;
+*)
+cat <<END
+
+\$PATH environment edit
+	add:    path-var add /some/path
+	add:    path-var add ./resolve/to/absolte/path
+	add:    path-var add-rel ./always/relative/path
+	delete: path-var del /some/path
+	delete: path-var list
+
+END
+   ;;
+esac
+
+
+

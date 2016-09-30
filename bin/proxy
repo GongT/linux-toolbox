@@ -1,0 +1,71 @@
+#!/bin/bash
+
+
+enable_bash(){
+	export HTTP_PROXY=http://10.0.1.1:7070
+	export HTTPS_PROXY=http://10.0.1.1:7070
+}
+disable_bash(){
+	export HTTP_PROXY=""
+	export HTTPS_PROXY=""
+}
+
+enable_npm(){
+	npm config set proxy http://10.0.1.1:7070
+	npm config set https-proxy http://10.0.1.1:7070
+}
+disable_npm(){
+	npm config delete proxy
+	npm config delete https-proxy
+}
+
+enable_dnf(){
+	echo "start dnf"
+}
+disable_dnf(){
+	echo "dis dnf"
+}
+
+enable_git(){
+	sudo git config --system --add global.proxy http://10.0.1.1:7070
+}
+disable_git(){
+	sudo git config --system --unset-all global.proxy
+}
+
+start_bash(){
+	export PROXY_BASH=true
+	echo "entering proxy bash"
+	bash
+	echo "leaving proxy bash"
+}
+
+if [ "$*" = "on" ]; then
+	if [ -n "$PROXY_BASH" ]; then
+		echo "you are already in proxy bash"
+		exit 2
+	fi
+	echo "proxy set to ON, you must source this file."
+	enable_bash
+	enable_npm
+	enable_dnf
+	enable_git
+elif [ "$*" = "bash" ]; then
+	enable_bash
+	start_bash
+	disable_bash
+elif [ "$*" = "off" ]; then
+	if [ -n "$PROXY_BASH" ]; then
+		echo "you are already in proxy bash"
+		exit 2
+	fi
+	echo "proxy set to OFF, you must source this file."
+	disable_bash
+	disable_npm
+	disable_dnf
+	disable_git
+else
+	echo -e "Usage: proxy [on|off]"
+	exit 1
+fi
+

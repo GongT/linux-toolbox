@@ -1,0 +1,19 @@
+#!/bin/bash
+
+COLUMNS=$(stty size | awk '{print $2}')
+
+if [ "$1" = "-c" ]; then
+	shift
+	cnt=`echo $*`
+	len=$(( ${#cnt}*2 ))
+else
+	cnt=`echo $*`
+	len=${#cnt}
+fi
+left=$(( (${COLUMNS} - ${len}) /2 ))
+
+if [ ${left} -gt 0 ]; then
+	eval "printf '%${left}s'"
+fi
+
+echo ${cnt}

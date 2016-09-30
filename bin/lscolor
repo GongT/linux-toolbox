@@ -1,0 +1,5 @@
+#!/bin/bash
+
+#todo use bash
+php ${BASH_SOURCE}.php
+

@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# todo rewrite
+for ex in 0 1 2 4 5 7 ; do
+	echo -ne "\e[${ex}m\\\\e[${ex}m\n";
+	for fg in {30..37} {90..97} 39 ; do
+		for bg in {40..47} {100..107} 49 ; do
+			echo -en "\e[${bg};${fg}m[${bg};${fg}m  "
+		done
+		echo ""
+	done
+	echo -e "\e[2${ex}m\n"
+done

@@ -1,0 +1,6 @@
+background/
+.idea
+.sync
+node_modules/
+systemd/generated
+.temp

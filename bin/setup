@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cygstart /setup.exe $*
+cygstart taskkill /T /IM mintty.exe

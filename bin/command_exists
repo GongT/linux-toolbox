@@ -1,0 +1,3 @@
+#!/bin/bash
+# todo multiple command check
+which $@ &>/dev/null

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# todo
+
+case $1 in
+a)
+   ;;
+d)
+   ;;
+l)
+   ;;
+   
+*)
+cat <<END
+
+Cron Utility
+	add:    cru a [-u user] <unique id> <"min hour day month week command">
+	delete: cru d [-u user] <unique id>
+	list:   cru l [-u user]       # same as crontab -l
+END
+   ;;
+esac
+
+

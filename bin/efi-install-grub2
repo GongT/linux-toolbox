@@ -1,0 +1,31 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+	DISKNAME=$(mount --show-labels | grep -Po '^(/dev/.*?)\d+ on /boot/efi ' | sed -E 's#[0-9]+ on /boot/efi $##g')
+else
+	DISKNAME=$1
+fi
+
+echo "Installing grub2 to $DISKNAME"
+
+grub2-install \
+	--modules=ntfs \
+	--modules=part_gpt \
+	--modules=png \
+	--modules=usb_keyboard \
+	--modules=terminal \
+	--modules=reboot \
+	--modules=normal \
+	--modules=ls \
+	--modules=loopback \
+	--modules=halt \
+	--modules=help \
+	--modules=configfile \
+	--recheck \
+	--removable \
+	--boot-directory=/boot/efi/grub2 \
+	--efi-directory=/boot/efi \
+	--bootloader-id="My Linux" \
+	$DISKNAME
+
+

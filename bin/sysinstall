@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -e
+
+if [ $# -eq 0 ]; then
+	echo "
+Usage:
+	sysinstall package1 package2 ...
+" >&2
+	exit
+fi
+
+export P=/tmp/installing/system-${RANDOM}
+
+while [ -e ${P} ]
+do
+	P=/tmp/installing/system-${RANDOM}
+done
+
+mkdir -p ${P}
+
+trap 'echo "exit" ; [ -n "${P}" ] && rm -rf ${P}' EXIT
+
+cd ${P}
+
+cat << 'INST' > ins.sh
+echo 255 > exitcode
+echo $@
+echo ""
+${SYSTEM_PACKAGE_MANAGER} install -y $@
+RET=$?
+echo $RET > exitcode
+INST
+
+screen -e^dd sh -c "ins.sh $@"
+echo -e '\e[A\r\e[K'
+
+RET=$(<exitcode)
+
+if [ "${RET}" -ne 0 ]; then
+	if [ -f screenlog.0 ]; then
+		cat screenlog.0
+	else
+		echo "no log available"
+	fi
+fi
+
+return ${RET}
