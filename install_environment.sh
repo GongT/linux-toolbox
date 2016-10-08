@@ -36,6 +36,16 @@ function emit_source {
 function emit_alias_sudo { # command line ...
 	emit "alias $1=\${SUDO}'$@'"
 }
+function copy_bin () {
+	chmod a+x "${_INSTALLING_}/$@"
+	for i in "${_INSTALLING_}/$@"
+	do
+		if [ -e "${GEN_BIN_PATH}/`basename "${i}"`" ]; then
+			unlink "${GEN_BIN_PATH}/`basename "${i}"`"
+		fi
+		ln -s "${i}" "${GEN_BIN_PATH}"
+	done
+}
 function emit_path {
 	local FOLDER="$@"
 	local WORKING="${_INSTALLING_-${INSTALL_SCRIPT_ROOT}/}"
@@ -87,7 +97,11 @@ echo ": quick-alias..."
 install_script quick-alias
 
 echo ": applications..."
-emit_source applications/_
+mkdir -p "${INSTALL_SCRIPT_ROOT}/.bin"
+
+export GEN_BIN_PATH="${INSTALL_SCRIPT_ROOT}/.bin"
+install_script applications docker
+emit_path .bin
 
 emit "export PATH"
 ### end
