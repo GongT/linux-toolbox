@@ -86,6 +86,9 @@ install_script system
 echo ": quick-alias..."
 install_script quick-alias
 
+echo ": bash source..."
+install_script bash_source
+
 echo ": applications..."
 emit_source applications/_
 
