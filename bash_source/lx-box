@@ -1,0 +1,33 @@
+#!/bin/bash
+
+function update {
+	sh ${MY_SCRIPT_ROOT}/install_environment.sh
+	source /etc/profile.d/linux-toolbox.sh
+}
+
+
+
+
+
+
+
+
+
+
+
+case $1 in
+update)
+	update
+;;
+upgrade)
+	
+;;
+*)
+	echo "Usage: linux-toolbox <command>"
+	echo " Commands:"
+	echo "    update           refresh linux-toolbox install"
+	echo "    upgrade          update version of linux-toolbox"
+	return 1
+;;
+esac
+
