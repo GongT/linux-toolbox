@@ -1,9 +1,9 @@
 #!/bin/bash
-
+export PROXY_HOST="${SSH_CLIENT_IP-localhost}:7070"
 
 enable_bash(){
-	export HTTP_PROXY=http://10.0.1.1:7070
-	export HTTPS_PROXY=http://10.0.1.1:7070
+	export HTTP_PROXY="http://${PROXY_HOST}"
+	export HTTPS_PROXY="http://${PROXY_HOST}"
 }
 disable_bash(){
 	export HTTP_PROXY=""
@@ -11,8 +11,8 @@ disable_bash(){
 }
 
 enable_npm(){
-	npm config set proxy http://10.0.1.1:7070
-	npm config set https-proxy http://10.0.1.1:7070
+	npm config set proxy "http://${PROXY_HOST}"
+	npm config set https-proxy "http://${PROXY_HOST}"
 }
 disable_npm(){
 	npm config delete proxy
@@ -27,7 +27,7 @@ disable_dnf(){
 }
 
 enable_git(){
-	sudo git config --system --add global.proxy http://10.0.1.1:7070
+	sudo git config --system --add global.proxy "http://${PROXY_HOST}"
 }
 disable_git(){
 	sudo git config --system --unset-all global.proxy
@@ -35,17 +35,17 @@ disable_git(){
 
 start_bash(){
 	export PROXY_BASH=true
-	echo "entering proxy bash"
+	echo "[entering proxy bash]" >&2
 	bash
-	echo "leaving proxy bash"
+	echo "[leaving proxy bash]" >&2
 }
 
 if [ "$*" = "on" ]; then
 	if [ -n "$PROXY_BASH" ]; then
-		echo "you are already in proxy bash"
-		exit 2
+		echo "you are already in proxy bash" >&2
+		return 2
 	fi
-	echo "proxy set to ON, you must source this file."
+	echo "proxy set to ON."
 	enable_bash
 	enable_npm
 	enable_dnf
@@ -56,16 +56,16 @@ elif [ "$*" = "bash" ]; then
 	disable_bash
 elif [ "$*" = "off" ]; then
 	if [ -n "$PROXY_BASH" ]; then
-		echo "you are already in proxy bash"
-		exit 2
+		echo "you are already in proxy bash" >&2
+		return 2
 	fi
-	echo "proxy set to OFF, you must source this file."
+	echo "proxy set to OFF." >&2
 	disable_bash
 	disable_npm
 	disable_dnf
 	disable_git
 else
-	echo -e "Usage: proxy [on|off]"
-	exit 1
+	echo -e "Usage: proxy [on|off]" >&2
+	return 1
 fi
 

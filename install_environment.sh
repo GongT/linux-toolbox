@@ -96,6 +96,9 @@ install_script system
 echo ": quick-alias..."
 install_script quick-alias
 
+echo ": bash source..."
+install_script bash_source
+
 echo ": applications..."
 mkdir -p "${INSTALL_SCRIPT_ROOT}/.bin"
 
