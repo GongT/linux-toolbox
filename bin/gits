@@ -1,0 +1,54 @@
+#!/bin/bash
+
+export LANG=C
+function status {
+	local F=$1
+	local RET=$(git -c color.status=always status -s)
+	local EXCODE=$?
+	
+	if [ ${EXCODE} -ne 0 ]; then
+		return
+	fi
+	
+	local CHANGED_FILES=$(echo -n "${RET}" | wc -l)
+	if [ "${CHANGED_FILES}" -eq 0 ]; then
+		if git status 2>&1 | grep -q "branch is ahead of" ; then
+			echo -e "\e[1m$F\e[0m - \e[38;5;14mneed push\e[0m"
+		else
+			echo -e "\e[2m$F - no change\e[0m"
+		fi
+	else
+		echo -e "\e[1m$F\e[0m - \e[38;5;14m${CHANGED_FILES}\e[0m changes:"
+		echo "${RET}" | sed "s/^/\\t/g"
+	fi
+}
+function each_folder {
+	local F
+	for F in *
+	do
+		if [ ! -d "${F}/.git" ]; then
+			continue
+		fi
+		cd "${F}"
+		
+		"$@" "${F}"
+		
+		cd ..
+	done
+}
+case "$1" in
+status)
+	each_folder status
+;;
+*)
+	echo "
+  gits: control many git repos in current dir
+  
+  usage:
+     gits <action> [args...]
+  commands:
+     status:
+" >&2
+	exit 1
+;;
+esac
