@@ -22,7 +22,14 @@ function status {
 		echo "${RET}" | sed "s/^/\\t/g"
 	fi
 }
+function run {
+	echo -e "\e[38;5;14m${1}:\e[0m"
+	shift
+	"$@"
+}
 function each_folder {
+	local CMD=$1
+	shift
 	local F
 	for F in *
 	do
@@ -31,7 +38,7 @@ function each_folder {
 		fi
 		cd "${F}"
 		
-		"$@" "${F}"
+		"$CMD" "${F}" "$@"
 		
 		cd ..
 	done
@@ -39,6 +46,10 @@ function each_folder {
 case "$1" in
 status)
 	each_folder status
+;;
+each)
+	shift
+	each_folder run "$@"
 ;;
 *)
 	echo "
