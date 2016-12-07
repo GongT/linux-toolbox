@@ -5,6 +5,7 @@ if ! command_exists docker ; then
 fi
 
 copy_bin bin/dps
+copy_bin bin/dmg
 
 DOCKER=`which docker`
 emit "alias docker=\"docker_wrap '${DOCKER}'\""
