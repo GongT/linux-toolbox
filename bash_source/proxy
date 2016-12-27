@@ -2,7 +2,7 @@
 if [ -z "${PROXY_HOST}" ]; then
 	export PROXY_HOST="${SSH_CLIENT_IP-localhost}:7070"
 fi
-export NO_PROXY="127.0.0.1,192.168.*,10.*,*.cn"
+export NO_PROXY="${NO_PROXY},127.0.0.1,192.168.*,10.*,*.cn"
 
 enable_bash(){
 	export HTTP_PROXY="http://${PROXY_HOST}"
@@ -48,7 +48,7 @@ if [ "$*" = "on" ]; then
 		echo "you are already in proxy bash" >&2
 		return 2
 	fi
-	echo "proxy set to ON."
+	echo "proxy set to ON. (PROXY=${PROXY_HOST})"
 	enable_bash
 	enable_npm
 	enable_dnf
