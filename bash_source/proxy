@@ -23,17 +23,17 @@ disable_npm(){
 }
 
 enable_dnf(){
-	echo "start dnf"
+	# TODO "start dnf"
 }
 disable_dnf(){
-	echo "dis dnf"
+	# TODO "dis dnf"
 }
 
 enable_git(){
-	sudo git config --system --add global.proxy "http://${PROXY_HOST}"
+	git config --system --add global.proxy "http://${PROXY_HOST}"
 }
 disable_git(){
-	sudo git config --system --unset-all global.proxy
+	git config --system --unset-all global.proxy
 }
 
 start_bash(){
