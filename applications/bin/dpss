@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-OUT=$(docker ps --format 'table {{.Names}}\t{{.Status}}' -a $@)
+OUT=$(docker ps --format 'table {{.Names}}\t{{.ID}}\t{{.Image}}\t{{.Status}}' -a $@)
 echo "${OUT}" | head -1
 OUT=$(echo "${OUT}" | tail -n +2 )
 echo "${OUT}" | grep --color=no ' Up [0-9LA]'
