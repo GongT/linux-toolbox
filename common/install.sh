@@ -23,5 +23,3 @@ function command_exists {
 }
 
 INIT_SCRIPT
-
-emit 'PATH="$PATH:./node_modules/.bin"'

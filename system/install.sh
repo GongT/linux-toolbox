@@ -8,6 +8,8 @@ elif [ -e /usr/bin/dnf ]; then
 	install_script package-manager dnf
 elif [ -e /usr/bin/yum ]; then
 	install_script package-manager yum
+elif [ -e /bin/cygpath.exe ]; then
+	install_script package-manager cygwin
 else
 	die -e "\nonly support apt-get | yum | dnf."
 fi
@@ -16,7 +18,7 @@ fi
 function require_command_in_package {
 	COMMAND=$1
 	PACKAGE_NAME=$2
-	
+
 	echo -n "command $1: "
 	if [ -e "/usr/bin/${COMMAND}" ]; then
 		echo "exists"
@@ -29,8 +31,8 @@ function require_command_in_package {
 		return 0
 	elif [ -n "${PACKAGE_NAME}" ]; then
 		echo "not exists"
-		echo "RUN:   ${SYSTEM_PACKAGE_MANAGER} install --color always -y ${PACKAGE_NAME} ..."
-		${SYSTEM_PACKAGE_MANAGER} install --color always -y "${PACKAGE_NAME}" || \
+		echo "RUN:   ${SYSTEM_PACKAGE_MANAGER} install -y ${PACKAGE_NAME} ..."
+		${SYSTEM_PACKAGE_MANAGER} install -y "${PACKAGE_NAME}" || \
 			die -e "\e[0mcan't install command: ${COMMAND}"
 		require_command_in_package "${COMMAND}"
 	else
@@ -39,12 +41,14 @@ function require_command_in_package {
 	fi
 }
 
-if grep -q "debian" /etc/os-release ; then
+if grep -q "debian" /etc/os-release 2>/dev/null ; then
 	install_script distribute debian
 elif [ -e "/etc/redhat-release" ]; then
 	install_script distribute rhel
+elif [ -e /bin/cygpath.exe ]; then
+	install_script distribute cygwin
 else
-	die -e "\nonly support debian | rhel-based linux."
+	die -e "\nonly support debian | rhel-based linux Or cygwin."
 fi
 
 require_command_in_package screen screen
@@ -60,6 +64,8 @@ elif [ -e /usr/bin/systemctl ] > /dev/null ; then
 	install_script init-process systemd
 elif [ -e /usr/sbin/chkconfig ] > /dev/null ; then
 	install_script init-process rhel-sysv
+elif [ -e /bin/cygpath.exe ]; then
+	echo "skip init helpers on cygwin"
 else
 	die -e "\nonly support upstart | systemd | rhel-sysv."
 fi

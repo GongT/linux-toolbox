@@ -1,3 +1,9 @@
 #!/bin/bash
 
-export PS1="[\[\e[31m\]ROOT\[\e[0m\] \W]# "
+if [ -n "$*" -a "$1" != "sh" ]; then
+    export PS1="$*"
+elif [ is_root ]; then
+    export PS1="[\[\e[31m\]\u\[\e[0m\] \W]# "
+else
+    export PS1="[\[\e[32m\]\u\[\e[0m\] \W]# "
+fi

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function update {
-	sh ${MY_SCRIPT_ROOT}/install_environment.sh
+	bash ${MY_SCRIPT_ROOT}/install_environment.sh
 	source /etc/profile.d/linux-toolbox.sh
 }
 
@@ -20,7 +20,7 @@ update)
 	update
 ;;
 upgrade)
-	
+
 ;;
 *)
 	echo "Usage: linux-toolbox <command>"

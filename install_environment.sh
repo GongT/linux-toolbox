@@ -18,6 +18,8 @@ cd `dirname ${BASH_SOURCE}` || \
 
 export INSTALL_SCRIPT_ROOT=$(pwd)
 export _INSTALLING_=`pwd`
+export GEN_BIN_PATH="${INSTALL_SCRIPT_ROOT}/.bin"
+mkdir -p "${GEN_BIN_PATH}"
 echo -e "installing scripts into \e[38;5;14m${INSTALL_SCRIPT_ROOT}\e[0m."
 
 TARGET=/etc/profile.d/linux-toolbox.sh
@@ -28,13 +30,13 @@ function emit_stdin {
 	cat >> "${TARGET}"
 }
 function emit_file {
-	cat "${_INSTALLING_}/$@" | grep -vE '^#!' >> "${TARGET}"
+	cat "${_INSTALLING_}/$1" | grep -vE '^#!' >> "${TARGET}"
 }
 function emit_source {
-	echo "source '${_INSTALLING_}/$@'" >> "${TARGET}"
+	echo "source ${_INSTALLING_}/$*" >> "${TARGET}"
 }
 function emit_alias_sudo { # command line ...
-	emit "alias $1=\${SUDO}'$@'"
+	emit alias $1="\${SUDO}$@"
 }
 function copy_bin () {
 	chmod a+x "${_INSTALLING_}/$@"
@@ -43,40 +45,38 @@ function copy_bin () {
 		if [ -e "${GEN_BIN_PATH}/`basename "${i}"`" ]; then
 			unlink "${GEN_BIN_PATH}/`basename "${i}"`"
 		fi
+		echo ln -s "${i}" "${GEN_BIN_PATH}"
 		ln -s "${i}" "${GEN_BIN_PATH}"
 	done
 }
 function emit_path {
-	local FOLDER="$@"
-	local WORKING="${_INSTALLING_-${INSTALL_SCRIPT_ROOT}/}"
-	local RET="${WORKING}/${FOLDER}"
-	
+	local RET="${_INSTALLING_}/$1"
+
 	if [ ! -e "${RET}" ]; then
 		die "required folder not exists: ${RET}"
 	fi
-	
+
 	chmod a+x "${RET}"
-	echo -n 'PATH="$PATH:' >> "${TARGET}"
-	echo -n "${RET}" >> "${TARGET}"
-	echo '"' >> "${TARGET}"
+
+	emit "source ${INSTALL_SCRIPT_ROOT}/bash_source/path-var add \"${RET}\""
 }
 function install_script {
 	local FOLDER="${1}"
-	
+
 	echo -ne "installing \e[38;5;11m${FOLDER}"
 	[ -n "$2" ] && echo -n " -> $2"
 	echo -e "\e[0m..."
-	
+
 	pushd "${FOLDER}" >/dev/null || \
 	 	die "can't run install script: `pwd`/${FOLDER}"
 	export _INSTALLING_=`pwd`
-	
+
 	source "${_INSTALLING_}/${2-install}.sh"
-	
+
 	echo -ne "${FOLDER}"
 	[ -n "$2" ] && echo -n " -> $2"
 	echo -e " - \e[38;5;10mOK!\e[0m"
-	
+
 	popd >/dev/null
 	export _INSTALLING_=`pwd`
 }
@@ -84,6 +84,13 @@ function install_script {
 ### start
 echo "create ${TARGET}"
 [ -e "${TARGET}" ] && rm ${TARGET} || true
+
+emit '
+if [ -n "${LINUX_TOOLBOX_INITED}" ]; then
+	return
+fi
+LINUX_TOOLBOX_INITED=yes
+'
 
 echo ": common tools..."
 install_script common
@@ -100,20 +107,27 @@ echo ": bash source..."
 install_script bash_source
 
 echo ": applications..."
-mkdir -p "${INSTALL_SCRIPT_ROOT}/.bin"
-
-export GEN_BIN_PATH="${INSTALL_SCRIPT_ROOT}/.bin"
 install_script applications docker
+emit "source ${INSTALL_SCRIPT_ROOT}/bash_source/path-var append './node_modules/.bin'"
 emit_path .bin
 
 emit "export PATH"
+
+echo "write bashrc"
+R=${RANDOM}
+grep -v "LINUX_TOOLBOX_INITED" ~/.bashrc >/tmp/${R} 2>/dev/null
+echo "# LINUX_TOOLBOX_INITED" >> /tmp/${R}
+echo '[ -z "${LINUX_TOOLBOX_INITED}" -a "$-" != *i* ] && source '"${TARGET}" >> /tmp/${R}
+cat /tmp/${R} > ~/.bashrc
+unlink /tmp/${R}
 ### end
 
 echo "complete, try start it."
 
+LINUX_TOOLBOX_INITED=
+
 source "${TARGET}" || \
 	{ unlink "${TARGET}" ; die "can't start scripts, install failed."; }
-
 
 echo -en "PATH:\n    "
 echo "$PATH" | sed 's/:/\n    /g'

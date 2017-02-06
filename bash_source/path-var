@@ -1,6 +1,8 @@
 #!/bin/sh
 
-OPDIR="$2"
+function main {
+
+local OPDIR="$2"
 
 case $1 in
 del)
@@ -16,7 +18,10 @@ del)
 	;;
 add)
 	if stat "${OPDIR}" &>/dev/null; then
-		export PATH="$PATH:`realpath "${OPDIR}"`"
+		local NEW_LOC="`realpath "${OPDIR}"`"
+		if ! echo "$PATH" | sed 's/:/\n/g' | grep "^${NEW_LOC}$" &>/dev/null ; then
+			export PATH="$PATH:${NEW_LOC}"
+		fi
 	else
 		echo "no such dir: ${OPDIR}" >&2
 		return 1
@@ -27,6 +32,11 @@ add-rel)
 	;;
 list)
 	echo "$PATH" | sed 's/:/\n/g'
+	;;
+append)
+	if ! echo "$PATH" | sed 's/:/\n/g' | grep "^${OPDIR}$" &>/dev/null ; then
+		export PATH="$PATH:${OPDIR}"
+	fi
 	;;
 *)
 cat <<END
@@ -43,4 +53,6 @@ END
 esac
 
 
+}
 
+main "$@"

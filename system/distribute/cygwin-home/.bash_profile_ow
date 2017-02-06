@@ -1,0 +1,11 @@
+CYG_SYS_BASHRC=1
+
+# If not running interactively, don't do anything
+[[ "$-" != *i* ]] && return
+
+# Exclude *dlls from TAB expansion
+export EXECIGNORE="*.dll"
+
+# Uncomment to use the terminal colours set in DIR_COLORS
+eval "$(dircolors -b /etc/DIR_COLORS)"
+

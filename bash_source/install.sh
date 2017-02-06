@@ -11,3 +11,7 @@ source_alias set-window-title
 source_alias set-prompt
 source_alias set-window-title-callback
 source_alias lx-box
+
+emit_source set-prompt ""
+emit_source set-window-title-callback-auto
+emit_source set-window-title-callback "set-window-title-callback-auto"
