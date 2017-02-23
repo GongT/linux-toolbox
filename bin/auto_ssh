@@ -36,10 +36,10 @@ set HOST [ lindex $argv 0 ]
 set ARGS [ lrange $argv 1 end ]
 
 if {
-	! [ regexp -expanded { ^([^:@]+)(?:\:(.*)|)@([a-z0-9A-Z\.]+)?:?([0-9]+)?(.*)? } $HOST -> USER PASS HOST PORT PATH ]
+	! [ regexp -expanded { ^([^:@]+)(?:\:(.*)|)@([a-z0-9A-Z_\.\-]+)?:?([0-9]+)?(.*)? } $HOST -> USER PASS HOST PORT PATH ]
 } {
 	if {
-		! [ regexp -expanded { ([a-z0-9A-Z\.]+)?:?([0-9]+)?(.*)? } $HOST -> HOST PORT PATH ]
+		! [ regexp -expanded { ([a-z0-9A-Z_\.\-]+)?:?([0-9]+)?(.*)? } $HOST -> HOST PORT PATH ]
 	} {
 		puts "URI parse error. ($HOST)\n"
 		usage
