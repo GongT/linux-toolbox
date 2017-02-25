@@ -36,7 +36,7 @@ function emit_source {
 	echo "source ${_INSTALLING_}/$*" >> "${TARGET}"
 }
 function emit_alias_sudo { # command line ...
-	emit alias $1="\${SUDO}$@"
+	emit "alias $1='\${SUDO}$@'"
 }
 function copy_bin () {
 	chmod a+x "${_INSTALLING_}/$@"
