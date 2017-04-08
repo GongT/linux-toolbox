@@ -69,3 +69,15 @@ elif [ -e /bin/cygpath.exe ]; then
 else
 	die -e "\nonly support upstart | systemd | rhel-sysv."
 fi
+
+
+if grep -q -i 'microsoft' /proc/version ; then
+	emit "
+function unix_mount_path {
+	echo \$1 | sed 's/^\([A-Z]\):/\L\/mnt\/\1/g' | sed 's/\\/\//g'
+}
+
+export ONE_DRIVE_PATH='$(unix_mount_path \$ONE_DRIVE_PATH)'
+export WSL_MOUNT_TEMP_PATH='$(unix_mount_path \$WSL_MOUNT_TEMP_PATH)'
+"
+fi
