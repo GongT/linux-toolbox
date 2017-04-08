@@ -72,13 +72,22 @@ fi
 
 
 if grep -q -i 'microsoft' /proc/version ; then
-	emit "
+	emit '
 function unix_mount_path {
-	echo \$1 | sed 's/^\\([A-Z]\\):/\\L\\/mnt\\/\\1/g' | sed 's/\\\\/\\//g'
+	echo $1 | sed "s/^\([A-Z]\):/\L\/mnt\/\1/g" | sed "s/\\\\/\//g"
 }
 
-echo $ONE_DRIVE_PATH
-export ONE_DRIVE_PATH='$(unix_mount_path \$ONE_DRIVE_PATH)'
-export WSL_MOUNT_TEMP_PATH='$(unix_mount_path \$WSL_MOUNT_TEMP_PATH)'
-"
+if [ -n "${ONE_DRIVE_PATH}" ]; then
+	export ONE_DRIVE_PATH="$(unix_mount_path $ONE_DRIVE_PATH)"
 fi
+
+if [ -n "${WSL_MOUNT_TEMP_PATH}" ]; then
+	export WSL_MOUNT_TEMP_PATH="$(unix_mount_path $WSL_MOUNT_TEMP_PATH)"
+fi
+
+'
+
+fi
+
+
+

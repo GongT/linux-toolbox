@@ -6,7 +6,7 @@ emit "function package-manager-make-cache {
 }"
 
 export SYSTEM_PACKAGE_MANAGER=apt
-apt-get update
+# apt-get update
 
 emit_alias_sudo "apt"
 emit_alias_sudo "apt-get"
