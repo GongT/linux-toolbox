@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if [ -z "${ONE_DRIVE_PATH}" ]; then
+	echo "no env var: ONE_DRIVE_PATH" >/&2
+	exit 1
+fi
+
+mkdir -p ~/.ssh
+
+cp -r "${ONE_DRIVE_PATH}/ssh-keys/*" ~/.ssh/
+sh ~/.ssh/perm.sh
+
+scp -r ~/.ssh/ fedora:/root/
+scp -r ~/.ssh/ docker:/root/

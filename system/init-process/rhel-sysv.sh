@@ -13,9 +13,9 @@ if [ $? -ne 0 ]; then
 fi
 
 function service { # name action
-	if [ "$2" == "enable" ]; then
+	if [ "$2" = "enable" ]; then
 		chkconfig --add $1
-	elif [ "$2" == "disable" ]; then
+	elif [ "$2" = "disable" ]; then
 		chkconfig --del $1
 	else
 		${SERVICE_BIN} "$@"

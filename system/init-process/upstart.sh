@@ -15,7 +15,7 @@ function service { # name action
 	if [ -z "$1" ]; then
 		${SERVICE_BIN} "$@"
 		echo
-	elif [ "$2" == "enable" ]; then
+	elif [ "$2" = "enable" ]; then
 		if [ ! -e "/etc/init/$1.conf" ]; then
 			echo "unknown service $1" >&2
 			return 1
@@ -36,7 +36,7 @@ function service { # name action
 				return 1
 			fi
 		fi
-	elif [ "$2" == "disable" ]; then
+	elif [ "$2" = "disable" ]; then
 		if [ ! -e "/etc/init/$1.conf" ]; then
 			echo "unknown service $1" >&2
 			return 1

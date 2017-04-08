@@ -69,7 +69,7 @@ fi
 if [ -n "$res" ]; then # 修改
 	EDIT=""
 	each_line(){
-		if [ "$2" == "$host" ]; then
+		if [ "$2" = "$host" ]; then
 			oip=$1
 			ohost=$2
 			shift ; shift

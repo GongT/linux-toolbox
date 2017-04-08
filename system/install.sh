@@ -86,7 +86,8 @@ if [ -n "${WSL_MOUNT_TEMP_PATH}" ]; then
 fi
 
 '
-
+	copy_bin WSL/sync-ssh-keys-download
+	copy_bin WSL/sync-ssh-keys-upload
 fi
 
 

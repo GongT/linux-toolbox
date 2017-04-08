@@ -13,7 +13,7 @@ function die {
 cd `dirname ${BASH_SOURCE}` || \
 	die "internal error: can't get script folder"
 
-[ -z "${1}" -o "$(pwd)" == "${1}" ] || \
+[ -z "${1}" -o "$(pwd)" = "${1}" ] || \
 	die -e "internal error: safe folder not equal\n\tactual: $(pwd)\n\texpect: ${1}"
 
 export INSTALL_SCRIPT_ROOT=$(pwd)
