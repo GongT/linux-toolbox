@@ -118,7 +118,7 @@ echo "write bashrc"
 R=${RANDOM}
 grep -v "LINUX_TOOLBOX_INITED" ~/.bashrc >/tmp/${R} 2>/dev/null
 echo "# LINUX_TOOLBOX_INITED" >> /tmp/${R}
-echo '[ -z "${LINUX_TOOLBOX_INITED}" -a "$-" != *i* ] && source '"${TARGET}" >> /tmp/${R}
+echo '[ -z "${LINUX_TOOLBOX_INITED}" -a "${-#*i}" = "$-" ] && source '"${TARGET}" >> /tmp/${R}
 cat /tmp/${R} > ~/.bashrc
 unlink /tmp/${R}
 ### end
