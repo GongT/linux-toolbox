@@ -1,12 +1,83 @@
 #!/usr/bin/env bash
-# todo
 
-case $1 in
+CONTENT=
+
+function save {
+	echo "${CONTENT}" | crontab -u "${USER}" -
+	RET=$?
+	if [ "$RET" -eq 0 ]; then
+		echo "cru: installing new crontab" >&2
+	fi
+	return "$RET"
+}
+function filter {
+	local KEY=$1
+	CONTENT=$(echo "${CONTENT}" | grep -v "#! ${KEY} !#")
+	echo "cru: deleting ${KEY}" >&2
+}
+function add {
+	local KEY=$1
+	shift
+	CONTENT="${CONTENT}
+$* #! ${KEY} !#"
+	echo "cru: adding ${KEY}" >&2
+}
+function init {
+	CONTENT=$(crontab -u "${USER}" -l 2>/dev/null)
+	if [ -z "${CONTENT}" ]; then
+		CONTENT="#              field          allowed values
+#              -----          --------------
+#              minute         0-59
+#              hour           0-23
+#              day of month   1-31
+#              month          1-12 (or names, see below)
+#              day of week    0-7 (0 or 7 is Sunday, or use names)
+"
+	fi
+}
+
+USER=$(id -nu)
+OP=$1
+shift
+
+while getopts "u:" opt; do
+	case "$opt" in
+	u)
+		USER="$OPTARG"
+		shift
+		shift
+		;;
+	\?)
+		echo "Invalid option: -$OPTARG" >&2
+		exit 1
+		;;
+    :)
+		echo "Option -$OPTARG requires an argument." >&2
+		exit 1
+		;;
+	esac
+done
+
+TAG=$1
+shift
+
+case "$OP" in
 a)
+	init
+	filter "$TAG"
+	add "$TAG" "$*"
+	save
    ;;
 d)
+	init
+	filter "$TAG"
+	for i in "$@"; do
+		filter "$i"
+	done
+	save
    ;;
 l)
+	crontab -u "${USER}" -l
    ;;
    
 *)
@@ -20,4 +91,4 @@ END
    ;;
 esac
 
-
+exit $?
