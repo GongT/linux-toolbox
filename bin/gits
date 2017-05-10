@@ -65,6 +65,7 @@ function run {
 	else
 		echo -e "\e[38;5;14m${GITS_FOLDER_NAME}: \e[38;5;9m×\e[0m"
 	fi
+	return ${RET}
 }
 function each_folder {
 	local CMD=$1
@@ -182,5 +183,5 @@ HELP
 		exit 1
 	;;
 	esac
-	exit 0
+	exit $?
 done
