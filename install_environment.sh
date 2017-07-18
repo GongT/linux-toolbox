@@ -6,7 +6,7 @@ echo "starting installer...."
 
 function die {
 	echo "" >&2
-	echo "$@" >&2
+	echo -e "\e[38;5;9m$@\e[0m" >&2
 	exit 1
 }
 

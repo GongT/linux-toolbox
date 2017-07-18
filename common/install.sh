@@ -23,3 +23,5 @@ function command_exists {
 }
 
 INIT_SCRIPT
+
+source ${TARGET} || die "start fail, bad header: ${TARGET}"
