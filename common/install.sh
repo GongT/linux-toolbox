@@ -19,7 +19,7 @@ function die {
 }
 
 function command_exists {
-	which "$@" &>/dev/null
+	command -v $1 &>/dev/null
 }
 
 INIT_SCRIPT
