@@ -1,9 +1,57 @@
 #!/bin/bash
 
-if [ -n "$*" -a "$1" != "sh" ]; then
-    export PS1="$*"
-elif [ is_root ]; then
-    export PS1="[\[\e[31m\]\u\[\e[0m\] \W]# "
+clean () {
+	unset ENDING
+	unset SAVE
+	unset VAL
+}
+
+if [ is_root ] ; then
+	ENDING="# "
 else
-    export PS1="[\[\e[32m\]\u\[\e[0m\] \W]# "
+	ENDING="$ "
 fi
+
+SAVE=
+if [ "-w" = "$1" ]; then
+	SAVE=yes
+	shift
+	VAL=$1
+	if [ -z "$VAL" ]; then
+		echo -n '' > ~/.PS1
+	fi
+elif [ "-w" = "$2" ]; then
+	SAVE=yes
+fi
+
+if [ "$SHELL" != "/bin/bash" ]; then
+	export PS1="$VAL${ENDING}"
+	echo "PS1=${PS1}"
+	clean
+	return
+fi
+
+if [ -z "$VAL" ] && [ -f ~/.PS1 ]; then
+	export PS1=$(<~/.PS1)
+	if [ -n "$PS1" ]; then
+		clean
+		return
+	fi
+fi
+
+if [ -n "$VAL" ]; then
+	export PS1="[\[\e[38;5;14m\]$VAL\[\e[0m\] \W]${ENDING}"
+elif [ is_root ]; then
+	export PS1="[\[\e[38;5;9m\]\u\[\e[0m\] \W]${ENDING}"
+else
+	export PS1="[\[\e[38;5;10m\]\u\[\e[0m\] \W]${ENDING}"
+fi
+
+echo "PS1=${PS1}"
+if [ -n "${SAVE}" ]; then
+	echo "${PS1}" > ~/.PS1
+else
+	echo "Hint: set-prompt -w xxxx to permanently save."
+fi
+
+clean
