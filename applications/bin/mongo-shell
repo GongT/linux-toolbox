@@ -2,6 +2,7 @@
 
 set -e
 
+cd ~
 MONGO_URL=$(jenv --show 2>/dev/null | grep '"DataBaseUrl"' | grep -oE 'mongodb://.+' | sed 's/"\s*,\s*$//g')
 
 echo "link to: ${MONGO_URL}"
