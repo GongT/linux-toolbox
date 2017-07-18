@@ -6,6 +6,7 @@ fi
 
 copy_bin bin/dps
 copy_bin bin/dmg
+copy_bin bin/mongo-shell
 
 DOCKER=`which docker`
 emit "alias docker=\"docker_wrap '${DOCKER}'\""

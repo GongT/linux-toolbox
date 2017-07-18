@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+
+MONGO_URL=$(jenv --show 2>/dev/null | grep '"DataBaseUrl"' | grep -oE 'mongodb://.+' | sed 's/"\s*,\s*$//g')
+
+echo "link to: ${MONGO_URL}"
+
+touch "${HOME}/.mongorc.js"
+chmod 0777 "${HOME}/.mongorc.js"
+
+docker run --rm -it \
+  -v "$(pwd):/working-directory" \
+  -w "/working-directory" \
+  -v "${HOME}:/home/mongodb" \
+  -u "0:0" \
+  --dns "172.17.0.1" \
+  mongo mongo "${MONGO_URL}"
+
