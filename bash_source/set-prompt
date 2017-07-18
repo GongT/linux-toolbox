@@ -53,7 +53,7 @@ fi
 echo "PS1=${PS1}"
 if [ -n "${SAVE}" ]; then
 	echo "${PS1}" > ~/.PS1
-else
+elif [ -z "$(<~/.PS1)" ]; then
 	echo "Hint: set-prompt -w xxxx to permanently save."
 fi
 
