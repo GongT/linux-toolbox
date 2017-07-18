@@ -21,7 +21,10 @@ if [ "-w" = "$1" ]; then
 		echo -n '' > ~/.PS1
 	fi
 elif [ "-w" = "$2" ]; then
+	VAL=$1
 	SAVE=yes
+else
+	VAL=$1
 fi
 
 if [ "$SHELL" != "/bin/bash" ]; then
