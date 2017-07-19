@@ -109,6 +109,8 @@ install_script bash_source
 echo ": applications..."
 install_script applications docker
 install_script applications dnf
+install_script applications node
+install_script applications journald
 emit "source ${INSTALL_SCRIPT_ROOT}/bash_source/path-var append './node_modules/.bin'"
 emit_path .bin
 
