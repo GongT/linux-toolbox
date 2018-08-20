@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 if [ -z "$1" ]; then
 	DISKNAME=$(mount --show-labels | grep -Po '^(/dev/.*?)\d+ on /boot/efi ' | sed -E 's#[0-9]+ on /boot/efi $##g')
 else
@@ -8,14 +10,25 @@ fi
 
 echo "Installing grub2 to $DISKNAME"
 
-grub2-install \
-	--modules=ntfs \
+OUTPUT=
+function run() {
+	OUTPUT=$("$@" 2>&1)
+	if [ $? -ne 0 ]; then
+		echo "$OUTPUT"
+		exit 1
+	fi
+}
+
+run grub2-install \
+	--modules=normal \
+	--modules=terminal \
 	--modules=part_gpt \
+	--modules=fat \
+	--modules=ext2 \
+	--modules=lvm \
 	--modules=png \
 	--modules=usb_keyboard \
-	--modules=terminal \
 	--modules=reboot \
-	--modules=normal \
 	--modules=ls \
 	--modules=loopback \
 	--modules=halt \
@@ -23,9 +36,32 @@ grub2-install \
 	--modules=configfile \
 	--recheck \
 	--removable \
-	--boot-directory=/boot/efi/grub2 \
+	--boot-directory=/boot/efi \
 	--efi-directory=/boot/efi \
 	--bootloader-id="My Linux" \
+	--locales="zh_CN" \
+	--debug \
 	$DISKNAME
 
+echo "$OUTPUT"
+echo "grub2-install ok."
+
+echo 'set -e; set -x' > /tmp/grub2-install-temp-script.sh
+
+
+echo "$OUTPUT" | \
+	grep grub-mkimage | grep -- '--output' | grep -oE 'grub-mkimage .+$' | \
+	sed 's/grub-mkimage/grub2-mkimage/g' | \
+	sed "s/--dtb ''//g" | \
+	sed 's#$# --config=/tmp/grub2-install-temp-menu.cfg#g' >> /tmp/grub2-install-temp-script.sh
+
+echo "configfile /grub2/grub.cfg" > /tmp/grub2-install-temp-menu.cfg
+
+bash /tmp/grub2-install-temp-script.sh
+
+# cp -fv /boot/efi/grub2/x86_64-efi/core.efi /boot/efi/EFI/BOOT/BOOTX64.EFI
+
+
+echo ""
+echo "OK."
 

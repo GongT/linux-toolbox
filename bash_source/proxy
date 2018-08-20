@@ -1,7 +1,6 @@
 #!/bin/bash
-if [ -z "${PROXY_HOST}" ]; then
-	export PROXY_HOST="${SSH_CLIENT_IP-localhost}:7070"
-fi
+
+PROXY_HOST=127.0.0.1:8080
 export NO_PROXY="${NO_PROXY},127.0.0.1,192.168.*,10.*,*.cn"
 
 enable_bash(){
@@ -24,9 +23,11 @@ disable_npm(){
 
 enable_dnf(){
 	# TODO "start dnf"
+	echo -n ""
 }
 disable_dnf(){
 	# TODO "dis dnf"
+	echo -n ""
 }
 
 enable_git(){

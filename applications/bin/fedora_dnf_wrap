@@ -1,24 +1,79 @@
 #!/bin/bash
 
-DNF=$1
+DNF="/usr/bin/dnf"
+
+function _dnf(){
+	echo "${DNF} $@" >&2
+	${DNF} "$@"
+}
+
 shift
 
 function clean_images {
-	${DNF} images | grep -E '<none>\s+<none>' | tee /dev/stderr  | awk '{print $3}' | xargs --no-run-if-empty dnf rmi
+	_dnf images | grep -E '<none>\s+<none>' | tee /dev/stderr  | awk '{print $3}' | xargs --no-run-if-empty dnf rmi
 }
 function clear_stopped_container {
 	dnf ps -a | tail -n +2 | grep -v Up | tee /dev/stderr | awk '{print $1}' | xargs --no-run-if-empty dnf rm
 }
 
+function parse_provide_file_arg() {
+	function arg() {
+		echo -ne ${ARG}
+	}
+	if arg | grep -q '/' ; then # has path
+		ARGS+=("$ARG")
+		return
+	fi
+	if arg | grep -qE '\s' ; then # has any empty - must not a well-known file
+		ARGS+=("$ARG")
+		return
+	fi
+	if arg | grep -qE '.so$' ; then
+		echo -e "use [\e[38;5;14m dnf s ${ARG%.so} \e[0m] instead."
+		exit
+	fi
+	if arg | grep -qE '\.so[.\d]+$' ; then
+		ARGS+=("/usr/lib64/$ARG")
+		return
+	fi
+	if arg | grep -qE '[^/.]+$' ; then
+		ARGS+=("*/bin/$ARG")
+		ARGS+=("*/sbin/$ARG")
+		return
+	fi
+}
+
 case $1 in
 i)
 	shift
-	${DNF} install -y "$@"
+	_dnf install -y "$@"
 ;;
 s)
 	shift
-	${DNF} search "$@"
+	if [ $# -eq 0 ]; then
+		_dnf search
+	else
+		S="*"
+		for i in "$@" ; do
+			S+="$i*"
+		done
+		e0=$(echo -ne '\e[0m')
+		e9=$(echo -ne '\e[38;5;9m')
+		e10=$(echo -ne '\e[38;5;10m')
+		DNF="unbuffer /usr/bin/dnf"
+		_dnf list "$S" | grep -v '.i686' \
+			| sed "s#Available Packages#${e9}\0${e0}#g" \
+			| sed "s#Installed Packages#${e10}\0${e0}#g"
+	fi
+;;
+p)
+	shift
+	ARGS=()
+	for ARG in "$@"; do
+		parse_provide_file_arg
+	done
+	_dnf provides "${ARGS[@]}"
 ;;
 *)
-	${DNF} "$@"
+	dnf "$@"
 esac
