@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo -e "\e[38;5;9m This is disabled.\e[0m"
+exit 1
+
 set -e
 
 if [ -z "$1" ]; then
@@ -55,7 +58,11 @@ echo "$OUTPUT" | \
 	sed "s/--dtb ''//g" | \
 	sed 's#$# --config=/tmp/grub2-install-temp-menu.cfg#g' >> /tmp/grub2-install-temp-script.sh
 
-echo "configfile /grub2/grub.cfg" > /tmp/grub2-install-temp-menu.cfg
+echo "
+echo emmmmmm...
+configfile /grub2/grub.cfg
+echo Wow such doge
+" > /tmp/grub2-install-temp-menu.cfg
 
 bash /tmp/grub2-install-temp-script.sh
 
