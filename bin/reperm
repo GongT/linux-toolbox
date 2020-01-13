@@ -23,7 +23,6 @@ fi
 MODE_FOLDER=0755
 MODE_FILE=0644
 if echo "$*" | grep -q -- "\b+x\b" ; then
-	MODE_FOLDER=0755
 	MODE_FILE=0755
 fi
 

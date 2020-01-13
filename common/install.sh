@@ -2,7 +2,7 @@
 
 emit '#!/bin/bash
 
-if [ "$0" != "-bash" ] && [ "$0" != "bash" ]; then
+if [ "$0" != "-bash" ] && [ "$0" != "bash" ] && [ "$0" != "/bin/bash" ] && [ "$0" != "/usr/bin/bash" ]; then
 	return
 fi
 case "$-" in

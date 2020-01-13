@@ -29,7 +29,7 @@ function parse_provide_file_arg() {
 		return
 	fi
 	if arg | grep -qE '.so$' ; then
-		echo -e "use [\e[38;5;14m dnf s ${ARG%.so} \e[0m] instead."
+		echo -e "use [\e[38;5;14m dnf search ${ARG%.so} \e[0m] instead."
 		exit
 	fi
 	if arg | grep -qE '\.so[.\d]+$' ; then
