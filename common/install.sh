@@ -1,9 +1,33 @@
 #!/bin/sh
 
-emit "#!/bin/bash"
+emit '#!/bin/bash
+
+if [ "$0" != "-bash" ] && [ "$0" != "bash" ]; then
+	return
+fi
+case "$-" in
+*i*)
+	# This shell is interactive
+	;;
+*)
+	# This shell is not interactive
+	return
+	;;
+esac
+
+if [[ -n "${LINUX_TOOLBOX_INITED}" ]]; then
+	return
+fi
+LINUX_TOOLBOX_INITED=yes
+
+if [[ ":$PATH:" != *":/usr/local/bin:"* ]] ; then
+	export PATH+=:/usr/local/bin
+fi
+'
+
 emit "export MY_SCRIPT_ROOT='${INSTALL_SCRIPT_ROOT}'"
 
-emit_stdin << 'INIT_SCRIPT'
+emit '
 
 function __FILE__ {
 	echo "$(realpath "${BASH_SOURCE[0]}")"
@@ -22,6 +46,6 @@ function command_exists {
 	command -v $1 &>/dev/null
 }
 
-INIT_SCRIPT
+'
 
 source ${TARGET} || die "start fail, bad header: ${TARGET}"

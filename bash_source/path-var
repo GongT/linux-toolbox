@@ -1,58 +1,68 @@
 #!/bin/sh
 
-function main {
+function _path_var_exists () {
+    [[ ":$PATH:" == *":$1:"* ]]
+}
+function _path_var_split () {
+    echo "$PATH" | sed 's/:/\n/g'
+}
 
-local OPDIR="$2"
-
-case $1 in
-del)
-	PATH_ARR="$(echo "$PATH" | sed 's/:/\n/g')"
-	if echo "${PATH_ARR}" | grep -qE "^${OPDIR}$" ; then
-		export PATH="$(
-			echo "${PATH_ARR}" | grep -vE "^${OPDIR}$" | tr '\n' ':' | sed -e 's/:$//'
-		)"
-	else
-		echo "nothing deleted" >&2
-		return 1
-	fi
-	;;
-add)
-	if stat "${OPDIR}" &>/dev/null; then
-		local NEW_LOC="`realpath "${OPDIR}"`"
-		if ! echo "$PATH" | sed 's/:/\n/g' | grep "^${NEW_LOC}$" &>/dev/null ; then
-			export PATH="$PATH:${NEW_LOC}"
-		fi
-	else
-		echo "no such dir: ${OPDIR}" >&2
-		return 1
-	fi
-	;;
-add-rel)
-	export PATH="$PATH:${OPDIR}"
-	;;
-list)
-	echo "$PATH" | sed 's/:/\n/g'
-	;;
-append)
-	if ! echo "$PATH" | sed 's/:/\n/g' | grep "^${OPDIR}$" &>/dev/null ; then
-		export PATH="$PATH:${OPDIR}"
-	fi
-	;;
-*)
-cat <<END
+function _path_var_main {
+    
+    local OPDIR="$2"
+    
+    case $1 in
+        del)
+            # echo -n "remove $OPDIR ... "
+            _path_var_exists "$OPDIR" || return 0
+            PATH=":$PATH:"
+            PATH="${PATH/:$OPDIR:/:}"
+            PATH="${PATH:1:-1}"
+            # echo "ok"
+        ;;
+        add)
+			# echo -n "add $OPDIR ... " >&2
+            if [[ "${OPDIR:0:1}" == "/" ]]; then
+                _path_var_exists "$OPDIR" && return 0
+				# echo "ok" >&2
+                export PATH="$PATH:${OPDIR}"
+                elif stat "${OPDIR}" &>/dev/null; then
+                local NEW_LOC="`realpath "${OPDIR}"`"
+                export PATH="$PATH:${NEW_LOC}"
+            else
+                echo "no such dir: ${OPDIR}" >&2
+                return 1
+            fi
+        ;;
+        add-rel)
+            _path_var_exists "$OPDIR" && return 0
+            export PATH="$PATH:${OPDIR}"
+        ;;
+        list)
+            _path_var_split
+        ;;
+        append)
+            if ! echo "$PATH" | sed 's/:/\n/g' | grep "^${OPDIR}$" &>/dev/null ; then
+                export PATH="$PATH:${OPDIR}"
+            fi
+        ;;
+        *)
+	cat <<END
 
 \$PATH environment edit
 	add:    path-var add /some/path
 	add:    path-var add ./resolve/to/absolte/path
 	add:    path-var add-rel ./always/relative/path
 	delete: path-var del /some/path
-	delete: path-var list
+	list:   path-var list
 
 END
-   ;;
-esac
-
-
+            
+            return 1
+        ;;
+    esac
 }
 
-main "$@"
+_path_var_main "$@"
+
+unset _path_var_main _path_var_exists _path_var_split
