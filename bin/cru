@@ -6,21 +6,25 @@ function save {
 	echo "${CONTENT}" | crontab -u "${USER}" -
 	RET=$?
 	if [ "$RET" -eq 0 ]; then
-		echo "cru: installing new crontab" >&2
+		echo "cru: installed new crontab" >&2
+	else
+		echo -e "\e[38;5;9mcru: command failed, new crontab try to save is:\e[0;2m"
+		echo "$CONTENT"
+		echo -ne "\e[0m"
 	fi
 	return "$RET"
 }
 function filter {
 	local KEY=$1
 	CONTENT=$(echo "${CONTENT}" | grep -v "#! ${KEY} !#")
-	echo "cru: deleting ${KEY}" >&2
+	echo "cru: deleting [${KEY}]" >&2
 }
 function add {
 	local KEY=$1
 	shift
 	CONTENT="${CONTENT}
 $* #! ${KEY} !#"
-	echo "cru: adding ${KEY}" >&2
+	echo "cru: adding [${KEY}]" >&2
 }
 function init {
 	CONTENT=$(crontab -u "${USER}" -l 2>/dev/null)

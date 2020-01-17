@@ -1,75 +1,31 @@
 #!/bin/bash
 
-PROXY_HOST=127.0.0.1:8080
-export NO_PROXY="${NO_PROXY},127.0.0.1,192.168.*,10.*,*.cn"
-
-enable_bash(){
-	export HTTP_PROXY="http://${PROXY_HOST}"
-	export HTTPS_PROXY="http://${PROXY_HOST}"
-}
-disable_bash(){
-	export HTTP_PROXY=""
-	export HTTPS_PROXY=""
-}
-
-enable_npm(){
-	npm config set proxy "http://${PROXY_HOST}"
-	npm config set https-proxy "http://${PROXY_HOST}"
-}
-disable_npm(){
-	npm config delete proxy
-	npm config delete https-proxy
-}
-
-enable_dnf(){
-	# TODO "start dnf"
-	echo -n ""
-}
-disable_dnf(){
-	# TODO "dis dnf"
-	echo -n ""
-}
-
-enable_git(){
-	git config --system --add global.proxy "http://${PROXY_HOST}"
-}
-disable_git(){
-	git config --system --unset-all global.proxy
-}
-
-start_bash(){
-	export PROXY_BASH=true
-	echo "[entering proxy bash]" >&2
-	bash
-	echo "[leaving proxy bash]" >&2
-}
-
+if [[ -z "$PROXY" ]]; then
+	echo "environment variable PROXY is not set.">&2
+	exit 1
+fi
 if [ "$*" = "on" ]; then
-	if [ -n "$PROXY_BASH" ]; then
-		echo "you are already in proxy bash" >&2
-		return 2
-	fi
-	echo "proxy set to ON. (PROXY=${PROXY_HOST})"
-	enable_bash
-	enable_npm
-	enable_dnf
-	enable_git
-elif [ "$*" = "bash" ]; then
-	enable_bash
-	start_bash
-	disable_bash
+	export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY}
+
+	PROXY_ARGS="--proxy=${PROXY}"
+	alias pip="pip ${PROXY_ARGS}"
+	alias pip2="pip2 ${PROXY_ARGS}"
+	alias pip3="pip3 ${PROXY_ARGS}"
+	git config --system --add global.proxy "http://${PROXY_HOST}"
+	unset PROXY_ARGS
+
+	echo "Using proxy server $PROXY." >&2
 elif [ "$*" = "off" ]; then
-	if [ -n "$PROXY_BASH" ]; then
-		echo "you are already in proxy bash" >&2
-		return 2
-	fi
-	echo "proxy set to OFF." >&2
-	disable_bash
-	disable_npm
-	disable_dnf
-	disable_git
+	unset https_proxy http_proxy all_proxy HTTPS_PROXY HTTP_PROXY ALL_PROXY
+
+	unalias pip
+	unalias pip2
+	unalias pip3
+	git config --system --unset-all global.proxy
+
+	echo "Proxy server unset." >&2
 else
+	echo -e "proxy is currentlly " >&2
 	echo -e "Usage: proxy [on|off]" >&2
-	return 1
 fi
 

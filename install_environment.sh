@@ -22,7 +22,11 @@ export GEN_BIN_PATH="${INSTALL_SCRIPT_ROOT}/.bin"
 mkdir -p "${GEN_BIN_PATH}"
 echo -e "installing scripts into \e[38;5;14m${INSTALL_SCRIPT_ROOT}\e[0m."
 
-TARGET=/etc/profile.d/linux-toolbox.sh
+if [[ -e /etc/profile.d/linux-toolbox.sh ]]; then
+	rm -f /etc/profile.d/linux-toolbox.sh 
+fi
+
+TARGET=/etc/profile.d/00-linux-toolbox.sh
 function emit {
 	echo "$@" >> "${TARGET}"
 }
@@ -42,11 +46,12 @@ function copy_bin () {
 	chmod a+x "${_INSTALLING_}/$@"
 	for i in "${_INSTALLING_}/$@"
 	do
-		if [ -e "${GEN_BIN_PATH}/`basename "${i}"`" ]; then
-			unlink "${GEN_BIN_PATH}/`basename "${i}"`"
+		local T="${GEN_BIN_PATH}/`basename "${i}"`"
+		if [[ -e "$T" ]] || [[ -L "$T" ]]; then
+			unlink "$T"
 		fi
-		echo ln -s "${i}" "${GEN_BIN_PATH}"
-		ln -s "${i}" "${GEN_BIN_PATH}"
+		echo ln -s "${i}" "$T"
+		ln -s "${i}" "$T"
 	done
 }
 function emit_path {
@@ -85,13 +90,6 @@ function install_script {
 echo "create ${TARGET}"
 [ -e "${TARGET}" ] && rm ${TARGET} || true
 
-emit '
-if [ -n "${LINUX_TOOLBOX_INITED}" ]; then
-	return
-fi
-LINUX_TOOLBOX_INITED=yes
-'
-
 echo ": common tools..."
 install_script common
 
@@ -112,6 +110,7 @@ install_script applications dnf
 install_script applications node
 install_script applications journald
 emit "source ${INSTALL_SCRIPT_ROOT}/bash_source/path-var append './node_modules/.bin'"
+emit "source ${INSTALL_SCRIPT_ROOT}/bash_source/path-var append './common/temp/node_modules/.bin'"
 emit_path .bin
 
 emit "export PATH"

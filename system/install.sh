@@ -77,17 +77,7 @@ function unix_mount_path {
 	echo $1 | sed "s/^\([A-Z]\):/\L\/mnt\/\1/g" | sed "s/\\\\/\//g"
 }
 
-if [ -n "${ONE_DRIVE_PATH}" ]; then
-	export ONE_DRIVE_PATH="$(unix_mount_path $ONE_DRIVE_PATH)"
-fi
-
-if [ -n "${WSL_MOUNT_TEMP_PATH}" ]; then
-	export WSL_MOUNT_TEMP_PATH="$(unix_mount_path $WSL_MOUNT_TEMP_PATH)"
-fi
-
 '
-	copy_bin WSL/sync-ssh-keys-download
-	copy_bin WSL/sync-ssh-keys-upload
 fi
 
 

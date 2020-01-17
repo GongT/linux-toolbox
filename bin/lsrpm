@@ -1,4 +1,3 @@
 #!/bin/bash
 
-# todo not here
-repoquery --installed --all $*
+dnf repoquery --installed --all $*

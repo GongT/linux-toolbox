@@ -26,7 +26,7 @@ cat << 'INST' > ins.sh
 echo 255 > exitcode
 echo $@
 echo ""
-${SYSTEM_PACKAGE_MANAGER} install -y $@
+${SUDO} ${SYSTEM_PACKAGE_MANAGER} install -y $@
 RET=$?
 echo $RET > exitcode
 INST

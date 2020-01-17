@@ -20,10 +20,16 @@ elif [ `id -u` -ne 0 ]; then # linux none priv user
 	exit
 fi
 
-echo 'Changing folder permission...'
-find -type d -exec chmod 0755 '{}' \;
-echo 'Changing files permissions...'
-find -type f -exec chmod 0644 '{}' \;
+MODE_FOLDER=0755
+MODE_FILE=0644
+if echo "$*" | grep -q -- "\b+x\b" ; then
+	MODE_FILE=0755
+fi
+
+echo "Changing folder permission $MODE_FOLDER..."
+find -type d -exec chmod $MODE_FOLDER '{}' \;
+echo "Changing files permission $MODE_FILE..."
+find -type f -exec chmod $MODE_FILE '{}' \;
 
 echo 'Restoring SELinux contexts...'
 restorecon . -r

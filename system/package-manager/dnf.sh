@@ -6,6 +6,6 @@ emit "function package-manager-make-cache {
 }"
 
 export SYSTEM_PACKAGE_MANAGER=dnf
-dnf makecache
+# dnf makecache
 
 emit_alias_sudo dnf
