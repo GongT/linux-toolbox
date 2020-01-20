@@ -46,6 +46,10 @@ pss)
 	shift
 	pps 'table {{.Names}} {{.ID}} {{.Image}} {{.Status}}' "$@"
 ;;
+psss)
+	shift
+	"${PODMAN}" ps "$@"
+;;
 img)
 	shift
 	"${PODMAN}" images --format "table {{.ID}}\t{{.Repository}}:{{.Tag}}\t{{.Size}}" "$@"
