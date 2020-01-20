@@ -5,5 +5,4 @@ if ! command_exists dnf ; then
 fi
 
 DNF=`which dnf`
-emit "alias dnf=\"fedora_dnf_wrap '${DNF}'\""
-copy_bin bin/fedora_dnf_wrap
+emit "alias dnf=\"${VAR_HERE}/bin/fedora_dnf_wrap '${DNF}'\""

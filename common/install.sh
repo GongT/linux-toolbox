@@ -42,8 +42,8 @@ function die {
 	exit 1
 }
 
-function command_exists {
-	command -v $1 &>/dev/null
+function command_exists() {
+	command -p $1 &>/dev/null
 }
 
 '

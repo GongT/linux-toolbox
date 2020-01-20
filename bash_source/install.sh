@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function source_alias {
-	emit "alias ${1}=\"source '${_INSTALLING_}/${1}'\""
+	emit "alias ${1}=\"source '${VAR_HERE}/${1}'\""
 }
 
 source_alias switch

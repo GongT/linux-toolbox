@@ -37,7 +37,7 @@ function emit_file {
 	cat "${_INSTALLING_}/$1" | grep -vE '^#!' >> "${TARGET}"
 }
 function emit_source {
-	echo "source ${_INSTALLING_}/$*" >> "${TARGET}"
+	echo "source ${VAR_HERE}/$*" >> "${TARGET}"
 }
 function emit_alias_sudo { # command line ...
 	emit "alias $1='\${SUDO}$@'"
@@ -54,18 +54,21 @@ function copy_bin () {
 		ln -s "${i}" "$T"
 	done
 }
-function emit_path {
-	local RET="${_INSTALLING_}/$1"
-
-	if [ ! -e "${RET}" ]; then
-		die "required folder not exists: ${RET}"
+function emit_relpath() {
+	emit "source \"\$MY_SCRIPT_ROOT/bash_source/path-var\" add \"${1}\""
+}
+function emit_path() {
+	local PA="${_INSTALLING_}/$1"
+	if [ ! -e "$PA" ]; then
+		die "required folder not exists: ${PA}"
 	fi
 
-	chmod a+x "${RET}"
+	chmod a+rx "$PA"
 
-	emit "source ${INSTALL_SCRIPT_ROOT}/bash_source/path-var add \"${RET}\""
+	local P="\$MY_SCRIPT_ROOT/$1"
+	emit "source \"\$MY_SCRIPT_ROOT/bash_source/path-var\" add \"${P}\""
 }
-function install_script {
+function install_script() {
 	local FOLDER="${1}"
 
 	echo -ne "installing \e[38;5;11m${FOLDER}"
@@ -74,7 +77,11 @@ function install_script {
 
 	pushd "${FOLDER}" >/dev/null || \
 	 	die "can't run install script: `pwd`/${FOLDER}"
-	export _INSTALLING_=`pwd`
+	export _INSTALLING_=`pwd` HERE=`pwd`
+	export VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$INSTALL_SCRIPT_ROOT"}"
+	
+	echo "HERE=$HERE"
+	echo "VAR_HERE=$VAR_HERE"
 
 	source "${_INSTALLING_}/${2-install}.sh"
 
@@ -83,7 +90,8 @@ function install_script {
 	echo -e " - \e[38;5;10mOK!\e[0m"
 
 	popd >/dev/null
-	export _INSTALLING_=`pwd`
+	export _INSTALLING_=`pwd` HERE=`pwd`
+	export VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$INSTALL_SCRIPT_ROOT"}"
 }
 
 ### start
@@ -105,12 +113,10 @@ echo ": bash source..."
 install_script bash_source
 
 echo ": applications..."
-install_script applications docker
-install_script applications dnf
-install_script applications node
-install_script applications journald
-emit "source ${INSTALL_SCRIPT_ROOT}/bash_source/path-var append './node_modules/.bin'"
-emit "source ${INSTALL_SCRIPT_ROOT}/bash_source/path-var append './common/temp/node_modules/.bin'"
+for FILE in "${INSTALL_SCRIPT_ROOT}/applications/"*.sh
+do
+	install_script applications $(basename "$FILE" .sh)
+done
 emit_path .bin
 
 emit "export PATH"
