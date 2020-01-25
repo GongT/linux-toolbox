@@ -26,7 +26,7 @@ if [[ -e /etc/profile.d/linux-toolbox.sh ]]; then
 	rm -f /etc/profile.d/linux-toolbox.sh 
 fi
 
-TARGET=/etc/profile.d/00-linux-toolbox.sh
+TARGET=/etc/profile.d/01-linux-toolbox.sh
 function emit {
 	echo "$@" >> "${TARGET}"
 }

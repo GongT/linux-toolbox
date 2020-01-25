@@ -10,7 +10,8 @@ Will load in new interactive BASH session.
 
 ### Uninstall
 ```bash
-rm -f /etc/profile.d/00-linux-toolbox.sh
+rm -f /etc/profile.d/01-linux-toolbox.sh
+rm -f /etc/profile.d/00-environment.sh
 rm -rf /path/to/cloned/repo
 ```
 

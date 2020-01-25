@@ -1,31 +1,32 @@
 #!/bin/bash
 
-if [[ -z "$PROXY" ]]; then
-	echo "environment variable PROXY is not set.">&2
-	exit 1
-fi
-if [ "$*" = "on" ]; then
-	export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY}
-
-	PROXY_ARGS="--proxy=${PROXY}"
-	alias pip="pip ${PROXY_ARGS}"
-	alias pip2="pip2 ${PROXY_ARGS}"
-	alias pip3="pip3 ${PROXY_ARGS}"
-	git config --system --add global.proxy "http://${PROXY_HOST}"
-	unset PROXY_ARGS
-
-	echo "Using proxy server $PROXY." >&2
+if [[ "$*" = "on" ]]; then
+	if [[ -z "$PROXY" ]]; then
+		echo "environment variable PROXY is not set.">&2
+		echo "   use proxy set before this.">&2
+	else
+		export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY} NO_PROXY="10.*,192.*,127.*,172.*"
+		echo "Using proxy server $PROXY." >&2
+	fi
 elif [ "$*" = "off" ]; then
-	unset https_proxy http_proxy all_proxy HTTPS_PROXY HTTP_PROXY ALL_PROXY
-
-	unalias pip
-	unalias pip2
-	unalias pip3
-	git config --system --unset-all global.proxy
+	unset https_proxy http_proxy all_proxy HTTPS_PROXY HTTP_PROXY ALL_PROXY NO_PROXY
 
 	echo "Proxy server unset." >&2
+elif [ "$1" = "set" ]; then
+	echo "export PROXY='$2'" | tee "/etc/profile.d/00-environment.sh"
+	export PROXY="$2"
+elif [ "$*" = "test" ]; then
+	if [[ -z "$HTTP_PROXY" ]]; then
+		echo "Proxy is not set" >&2
+	else
+		if curl -v google.com 2>&1 | grep -q 'www\.google\.com' ; then
+			echo -e "\e[38;5;10mProxy is working.\e[0m"
+		else
+			echo -e "\e[38;5;9mProxy is NOT working.\e[0m"
+		fi
+	fi
 else
-	echo -e "proxy is currentlly " >&2
-	echo -e "Usage: proxy [on|off]" >&2
+	echo -e "not support: $*" >&2
+	echo -e "Usage: proxy [on|off|set|test]" >&2
 fi
 
