@@ -13,3 +13,6 @@ emit_file shortcuts.sh
 
 emit "# utils.sh"
 emit_file utils.sh
+
+mkdir -p /etc/ssh/ssh_config.d
+echo "SendEnv DISPLAY" > /etc/ssh/ssh_config.d/80-linux-toolbox.conf

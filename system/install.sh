@@ -60,7 +60,7 @@ unset require_command_in_package
 
 if [ -e /usr/lib/upstart ]; then
 	install_script init-process upstart
-elif command -v systemctl > /dev/null ; then
+elif command_exists systemctl > /dev/null ; then
 	install_script init-process systemd
 elif [ -e /usr/sbin/chkconfig ] > /dev/null ; then
 	install_script init-process rhel-sysv

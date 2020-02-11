@@ -12,6 +12,7 @@ Will load in new interactive BASH session.
 ```bash
 rm -f /etc/profile.d/01-linux-toolbox.sh
 rm -f /etc/profile.d/00-environment.sh
+rm -f /etc/ssh/ssh_config.d/80-linux-toolbox.conf
 rm -rf /path/to/cloned/repo
 ```
 

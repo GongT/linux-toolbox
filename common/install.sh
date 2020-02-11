@@ -2,23 +2,25 @@
 
 emit '#!/bin/bash
 
-if [ "$0" != "-bash" ] && [ "$0" != "bash" ] && [ "$0" != "/bin/bash" ] && [ "$0" != "/usr/bin/bash" ]; then
-	return
-fi
-case "$-" in
-*i*)
-	# This shell is interactive
-	;;
-*)
-	# This shell is not interactive
-	return
-	;;
-esac
+if [[ -z "$__L_INST" ]]; then
+	if [ "$0" != "-bash" ] && [ "$0" != "bash" ] && [ "$0" != "/bin/bash" ] && [ "$0" != "/usr/bin/bash" ]; then
+		return
+	fi
+	case "$-" in
+	*i*)
+		# This shell is interactive
+		;;
+	*)
+		# This shell is not interactive
+		return
+		;;
+	esac
 
-if [[ -n "${LINUX_TOOLBOX_INITED}" ]]; then
-	return
+	if [[ -n "${LINUX_TOOLBOX_INITED}" ]]; then
+		return
+	fi
 fi
-LINUX_TOOLBOX_INITED=yes
+export LINUX_TOOLBOX_INITED=yes
 
 if [[ ":$PATH:" != *":/usr/local/bin:"* ]] ; then
 	export PATH+=:/usr/local/bin
@@ -42,10 +44,16 @@ function die {
 	exit 1
 }
 
+function find_command() {
+	env -i sh --noprofile --norc -c "command -v \"$@\"" -- "$1"
+}
 function command_exists() {
-	command -p $1 &>/dev/null
+	find_command "$1" &>/dev/null
 }
 
 '
 
+unset LINUX_TOOLBOX_INITED
+__L_INST=yes
 source ${TARGET} || die "start fail, bad header: ${TARGET}"
+unset __L_INST LINUX_TOOLBOX_INITED

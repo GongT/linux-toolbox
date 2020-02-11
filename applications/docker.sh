@@ -8,6 +8,6 @@ copy_bin bin/dps
 copy_bin bin/dmg
 copy_bin bin/mongo-shell
 
-DOCKER=$(command -p docker)
+DOCKER=$(find_command docker)
 emit "alias docker=\"${VAR_HERE}/bin/docker_wrap '${DOCKER}'\""
 copy_bin bin/docker_wrap

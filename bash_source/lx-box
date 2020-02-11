@@ -2,7 +2,8 @@
 
 function update {
 	bash ${MY_SCRIPT_ROOT}/install_environment.sh
-	source /etc/profile.d/linux-toolbox.sh
+	unset LINUX_TOOLBOX_INITED
+	source /etc/profile.d/01-linux-toolbox.sh
 }
 
 
