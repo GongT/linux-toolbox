@@ -121,6 +121,9 @@ emit_path .bin
 
 emit "export PATH"
 
+echo ": user apps..."
+install_script user
+
 echo "write bashrc"
 R=${RANDOM}
 grep -v "LINUX_TOOLBOX_INITED" ~/.bashrc >/tmp/${R} 2>/dev/null
