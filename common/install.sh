@@ -20,7 +20,7 @@ if [[ -z "$__L_INST" ]]; then
 		return
 	fi
 fi
-export LINUX_TOOLBOX_INITED=yes
+LINUX_TOOLBOX_INITED=yes
 
 if [[ ":$PATH:" != *":/usr/local/bin:"* ]] ; then
 	export PATH+=:/usr/local/bin
