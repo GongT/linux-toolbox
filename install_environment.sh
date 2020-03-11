@@ -4,7 +4,7 @@ set -e
 
 echo "starting installer...."
 
-function die {
+function die() {
 	echo "" >&2
 	echo -e "\e[38;5;9m$@\e[0m" >&2
 	exit 1
@@ -27,22 +27,34 @@ if [[ -e /etc/profile.d/linux-toolbox.sh ]]; then
 fi
 
 TARGET=/etc/profile.d/01-linux-toolbox.sh
-function emit {
+function emit() {
 	echo "$@" >> "${TARGET}"
 }
-function emit_stdin {
+function emit_stdin() {
 	cat >> "${TARGET}"
 }
-function emit_file {
+function emit_file() {
 	cat "${_INSTALLING_}/$1" | grep -vE '^#!' >> "${TARGET}"
 }
-function emit_source {
-	echo "source ${VAR_HERE}/$*" >> "${TARGET}"
+function emit_source() {
+	local CMD=$1
+	shift
+
+	echo -n "source ${VAR_HERE}/$CMD" >> "${TARGET}"
+	if [[ $# -eq 0 ]]; then
+		echo -n ' ""' >> "${TARGET}"
+	else
+		for i in "$@" ; do
+			echo -n " '$i'" >> "${TARGET}"
+		done
+	fi
+
+	echo "" >> "${TARGET}"
 }
-function emit_alias_sudo { # command line ...
+function emit_alias_sudo() { # command line ...
 	emit "alias $1='\${SUDO}$@'"
 }
-function copy_bin () {
+function copy_bin() {
 	chmod a+x "${_INSTALLING_}/$@"
 	for i in "${_INSTALLING_}/$@"
 	do
@@ -55,18 +67,18 @@ function copy_bin () {
 	done
 }
 function emit_relpath() {
-	emit "source \"\$MY_SCRIPT_ROOT/bash_source/path-var\" add \"${1}\""
+	emit "path-var add \"${1}\""
 }
 function emit_path() {
 	local PA="${_INSTALLING_}/$1"
-	if [ ! -e "$PA" ]; then
+	if [[ ! -e "$PA" ]]; then
 		die "required folder not exists: ${PA}"
 	fi
 
 	chmod a+rx "$PA"
 
 	local P="\$MY_SCRIPT_ROOT/$1"
-	emit "source \"\$MY_SCRIPT_ROOT/bash_source/path-var\" add \"${P}\""
+	emit "path-var add \"${P}\""
 }
 function install_script() {
 	local FOLDER="${1}"
@@ -80,8 +92,8 @@ function install_script() {
 	export _INSTALLING_=`pwd` HERE=`pwd`
 	export VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$INSTALL_SCRIPT_ROOT"}"
 	
-	echo "HERE=$HERE"
-	echo "VAR_HERE=$VAR_HERE"
+	echo -e "\e[2mHERE=$HERE\e[0m"
+	echo -e "\e[2mVAR_HERE=$VAR_HERE\e[0m"
 
 	source "${_INSTALLING_}/${2-install}.sh"
 

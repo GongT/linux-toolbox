@@ -1,2 +1,3 @@
-emit_source "cygwin-home/.bashrc"
-emit_source "cygwin-home/.bash_profile_ow"
+emit '[[ -f /etc/bash_completion ]] && . /etc/bash_completion'
+emit_file "cygwin-home/windows.sh"
+emit_file "cygwin-home/file_menu_tools.sh"
