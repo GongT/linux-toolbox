@@ -23,7 +23,7 @@ if [[ -z "$__L_INST" ]]; then
 		return
 	fi
 fi
-LINUX_TOOLBOX_INITED=yes
+declare +x LINUX_TOOLBOX_INITED=yes
 
 if [[ ":$PATH:" != *":/usr/local/bin:"* ]] ; then
 	export PATH+=:/usr/local/bin
@@ -34,14 +34,14 @@ emit "export MY_SCRIPT_ROOT='${INSTALL_SCRIPT_ROOT}'"
 
 emit '
 
-function __FILE__ {
+function __FILE__() {
 	echo "$(realpath "${BASH_SOURCE[0]}")"
 }
-function __DIR__ {
+function __DIR__() {
 	echo "$(dirname $(realpath "${BASH_SOURCE[0]}") )"
 }
 
-function die {
+function die() {
 	echo "" >&2
 	echo "$@" >&2
 	exit 1
@@ -56,7 +56,13 @@ function command_exists() {
 
 '
 
+emit_file "functions/list.sh"
+emit_file "functions/path-var.sh"
+
 unset LINUX_TOOLBOX_INITED
 __L_INST=yes
 source ${TARGET} || die "start fail, bad header: ${TARGET}"
 unset __L_INST LINUX_TOOLBOX_INITED
+
+emit_file "bash-config/exclude-list-dll.sh"
+emit_file "bash-config/history.sh"

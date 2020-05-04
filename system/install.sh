@@ -51,8 +51,6 @@ else
 	die -e "\nonly support debian | rhel-based linux Or cygwin."
 fi
 
-require_command_in_package screen screen
-require_command_in_package expect expect
 require_command_in_package vim vim
 
 unset require_command_in_package
@@ -79,6 +77,3 @@ function unix_mount_path {
 
 '
 fi
-
-
-
