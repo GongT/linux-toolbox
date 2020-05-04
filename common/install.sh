@@ -12,6 +12,9 @@ if [[ -z "$__L_INST" ]]; then
 		;;
 	*)
 		# This shell is not interactive
+		if [[ "$PROXY" ]] && [[ "$VSCODE_AGENT_FOLDER" ]]; then
+			export http_proxy="$PROXY" https_proxy="$PROXY"
+		fi
 		return
 		;;
 	esac

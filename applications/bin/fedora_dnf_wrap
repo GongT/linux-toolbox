@@ -9,13 +9,6 @@ function _dnf(){
 
 shift
 
-function clean_images {
-	_dnf images | grep -E '<none>\s+<none>' | tee /dev/stderr  | awk '{print $3}' | xargs --no-run-if-empty dnf rmi
-}
-function clear_stopped_container {
-	dnf ps -a | tail -n +2 | grep -v Up | tee /dev/stderr | awk '{print $1}' | xargs --no-run-if-empty dnf rm
-}
-
 function parse_provide_file_arg() {
 	function arg() {
 		echo -ne ${ARG}
