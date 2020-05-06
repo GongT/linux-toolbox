@@ -35,10 +35,14 @@ function set-machine-name() {
 	set-prompt ''
 }
 function ___calc_REMOTE_PATH() {
+	local M="${MACHINE_NAME-$(hostname)}"
 	if [[ "${REMOTE_PATH+found}" = 'found' ]]; then
-		REMOTE_PATH+=":${MACHINE_NAME-$(hostname)}"
+		REMOTE_PATH+=":$M"
 	else
-		export REMOTE_PATH="${MACHINE_NAME-$(hostname)}"
+		export REMOTE_PATH="$M"
+	fi
+	if [[ ! "${SSH_ORIGIN_MACHINE}" ]]; then
+		declare -gxr SSH_ORIGIN_MACHINE="$M"
 	fi
 	export _REMOTE_PATH_IN_TITLE=$(echo "$REMOTE_PATH" | sed 's/:/ → /g')
 }

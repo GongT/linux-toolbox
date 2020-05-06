@@ -3,15 +3,22 @@ if ! [[ -f /etc/ssh/sshd_config ]]; then
 fi
 
 function sshd-allow-environment() {
+	local title=$1
+	shift
 	local VALUES="$*"
 	if [[ ! "$VALUES" ]]; then
 		echo "Empty input!" >&2
 		return 1
 	fi
-	if grep --fixed-strings "AcceptEnv $VALUES" /etc/ssh/sshd_config &>/dev/null; then
-		return
+	if grep -q --fixed-strings " # $title" /etc/ssh/sshd_config; then
+		sed -i "/ # $title/c\AcceptEnv $VALUES # $title" /etc/ssh/sshd_config
+	else
+		echo "AcceptEnv $VALUES # $title" >>/etc/ssh/sshd_config
 	fi
-	echo "AcceptEnv $VALUES" >>/etc/ssh/sshd_config
 }
 
-sshd-allow-environment DISPLAY REMOTE_PATH
+declare -gxr SSH_CLIENT_IP=$(echo "${SSH_CLIENT}" | awk '{print $1}')
+
+if [[ ! "${DISPLAY}" ]]; then
+	export DISPLAY="${SSH_CLIENT_IP}:0"
+fi
