@@ -42,7 +42,7 @@ function ___calc_REMOTE_PATH() {
 		export REMOTE_PATH="$M"
 	fi
 	if [[ ! "${SSH_ORIGIN_MACHINE}" ]]; then
-		declare -gxr SSH_ORIGIN_MACHINE="$M"
+		export SSH_ORIGIN_MACHINE="$M"
 	fi
 	export _REMOTE_PATH_IN_TITLE=$(echo "$REMOTE_PATH" | sed 's/:/ → /g')
 }

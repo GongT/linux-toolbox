@@ -30,5 +30,3 @@ emit_file "bash-config/exclude-list-dll.sh"
 emit_file "bash-config/history.sh"
 
 emit_file "advance/machine-name.sh"
-mkdir -p /etc/ssh/ssh_config.d
-echo "SendEnv DISPLAY REMOTE_PATH" >/etc/ssh/ssh_config.d/80-linux-toolbox.conf

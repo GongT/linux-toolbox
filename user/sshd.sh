@@ -17,7 +17,7 @@ function sshd-allow-environment() {
 	fi
 }
 
-declare -gxr SSH_CLIENT_IP=$(echo "${SSH_CLIENT}" | awk '{print $1}')
+export SSH_CLIENT_IP=$(echo "${SSH_CLIENT}" | awk '{print $1}')
 
 if [[ ! "${DISPLAY}" ]]; then
 	export DISPLAY="${SSH_CLIENT_IP}:0"
