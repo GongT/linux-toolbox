@@ -43,6 +43,18 @@ function list() {
 			fi
 			# echo "ADD> $TARGET_VAR = ${!TARGET_VAR}">&2
 		;;
+		prepend)
+			# echo "PREPEND< $TARGET_VAR = ${!TARGET_VAR}">&2
+			if ! _list_exists "$VALUE" ; then
+				if [[ -n "$TARGET_VAR_VALUE" ]]; then
+					TARGET_VAR_VALUE="${VALUE}:$TARGET_VAR_VALUE"
+				else
+					TARGET_VAR_VALUE="$VALUE"
+				fi
+				eval "$TARGET_VAR='$TARGET_VAR_VALUE'"
+			fi
+			# echo "PREPEND> $TARGET_VAR = ${!TARGET_VAR}">&2
+		;;
 		dump)
 			_list_split
 		;;
@@ -63,6 +75,6 @@ colon-separated list edit tool:
 			RET=1
 		;;
 	esac
-	unset _list_exists _list_split
+	unset -f _list_exists _list_split
 	return $RET
 }

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -Eeuo pipefail
 
 echo "starting installer...."
 
@@ -9,62 +9,63 @@ function die() {
 	echo -e "\e[38;5;9m$@\e[0m" >&2
 	exit 1
 }
+function pad() {
+	local i
+	for ((i = 0; i < $1; i++)); do echo -n '  '; done
+}
 
-cd `dirname ${BASH_SOURCE}` || \
+cd $(dirname ${BASH_SOURCE}) ||
 	die "internal error: can't get script folder"
 
-[ -z "${1}" -o "$(pwd)" = "${1}" ] || \
-	die -e "internal error: safe folder not equal\n\tactual: $(pwd)\n\texpect: ${1}"
-
 export INSTALL_SCRIPT_ROOT=$(pwd)
-export _INSTALLING_=`pwd`
+export _INSTALLING_=$(pwd)
 export GEN_BIN_PATH="${INSTALL_SCRIPT_ROOT}/.bin"
 mkdir -p "${GEN_BIN_PATH}"
 echo -e "installing scripts into \e[38;5;14m${INSTALL_SCRIPT_ROOT}\e[0m."
 
 if [[ -e /etc/profile.d/linux-toolbox.sh ]]; then
-	rm -f /etc/profile.d/linux-toolbox.sh 
+	rm -f /etc/profile.d/linux-toolbox.sh
 fi
 
 TARGET=/etc/profile.d/01-linux-toolbox.sh
 function emit() {
-	echo "$@" >> "${TARGET}"
+	echo "$@" >>"${TARGET}"
 }
 function emit_stdin() {
-	cat >> "${TARGET}"
+	cat >>"${TARGET}"
 }
 function emit_file() {
-	cat "${_INSTALLING_}/$1" | grep -vE '^#!' >> "${TARGET}"
+	cat "${_INSTALLING_}/$1" | grep -vE '^#!' >>"${TARGET}"
 }
 function emit_source() {
 	local CMD=$1
 	shift
 
-	echo -n "source ${VAR_HERE}/$CMD" >> "${TARGET}"
+	echo -n "source ${VAR_HERE}/$CMD.sh" >>"${TARGET}"
 	if [[ $# -eq 0 ]]; then
-		echo -n ' ""' >> "${TARGET}"
+		echo -n ' ""' >>"${TARGET}"
 	else
-		for i in "$@" ; do
-			echo -n " '$i'" >> "${TARGET}"
+		for i in "$@"; do
+			echo -n " '$i'" >>"${TARGET}"
 		done
 	fi
 
-	echo "" >> "${TARGET}"
+	echo "" >>"${TARGET}"
 }
 function emit_alias_sudo() { # command line ...
 	emit "alias $1='\${SUDO}$@'"
 }
 function copy_bin() {
-	chmod a+x "${_INSTALLING_}/$@"
-	for i in "${_INSTALLING_}/$@"
-	do
-		local T="${GEN_BIN_PATH}/`basename "${i}"`"
-		if [[ -e "$T" ]] || [[ -L "$T" ]]; then
-			unlink "$T"
-		fi
-		echo ln -s "${i}" "$T"
-		ln -s "${i}" "$T"
-	done
+	chmod a+x "${_INSTALLING_}/$1"
+	local F="${_INSTALLING_}/$1"
+	local TN="${2-$(basename "${F}")}"
+	local T="${GEN_BIN_PATH}/$TN"
+	if [[ -e "$T" ]] && [[ "$(readlink "$T")" = "$F" ]]; then
+		return
+	fi
+	rm -f "$T"
+	echo ln -s "${F}" "$T"
+	ln -s "${F}" "$T"
 }
 function emit_relpath() {
 	emit "path-var add \"${1}\""
@@ -83,27 +84,30 @@ function emit_path() {
 function install_script() {
 	local FOLDER="${1}"
 
-	echo -ne "installing \e[38;5;11m${FOLDER}"
-	[ -n "$2" ] && echo -n " -> $2"
-	echo -e "\e[0m..."
+	local PWD=$(pwd)
+	echo -e "$(pad ${_INSTALL_LEVEL_-0})installing \e[38;5;11m.${PWD/"$INSTALL_SCRIPT_ROOT"/}/${FOLDER}/${2-install}.sh\e[0m ..."
 
-	pushd "${FOLDER}" >/dev/null || \
-	 	die "can't run install script: `pwd`/${FOLDER}"
-	export _INSTALLING_=`pwd` HERE=`pwd`
-	export VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$INSTALL_SCRIPT_ROOT"}"
-	
-	echo -e "\e[2mHERE=$HERE\e[0m"
-	echo -e "\e[2mVAR_HERE=$VAR_HERE\e[0m"
+	pushd "${FOLDER}" >/dev/null ||
+		die "can't run install script: $(pwd)/${FOLDER}"
+	local _INSTALLING_=$(pwd) HERE=$(pwd)
+	local VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$INSTALL_SCRIPT_ROOT"/}"
+
+	# echo -e "\e[2mHERE=$HERE\e[0m"
+	# echo -e "\e[2mVAR_HERE=$VAR_HERE\e[0m"
+
+	local -i _INSTALL_LEVEL_="${_INSTALL_LEVEL_+$_INSTALL_LEVEL_} + 1"
 
 	source "${_INSTALLING_}/${2-install}.sh"
 
-	echo -ne "${FOLDER}"
-	[ -n "$2" ] && echo -n " -> $2"
+	_INSTALL_LEVEL_="${_INSTALL_LEVEL_} - 1"
+
+	echo -ne "$(pad ${_INSTALL_LEVEL_})${FOLDER}"
+	[[ "${2+found}" = found ]] && echo -n " -> $2"
 	echo -e " - \e[38;5;10mOK!\e[0m"
 
 	popd >/dev/null
-	export _INSTALLING_=`pwd` HERE=`pwd`
-	export VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$INSTALL_SCRIPT_ROOT"}"
+	_INSTALLING_=$(pwd) HERE=$(pwd)
+	VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$INSTALL_SCRIPT_ROOT"/}"
 }
 
 ### start
@@ -125,8 +129,7 @@ echo ": bash source..."
 install_script bash_source
 
 echo ": applications..."
-for FILE in "${INSTALL_SCRIPT_ROOT}/applications/"*.sh
-do
+for FILE in "${INSTALL_SCRIPT_ROOT}/applications/"*.sh; do
 	install_script applications $(basename "$FILE" .sh)
 done
 emit_path .bin
@@ -139,20 +142,18 @@ install_script user
 echo "write bashrc"
 R=${RANDOM}
 grep -v "LINUX_TOOLBOX_INITED" ~/.bashrc >/tmp/${R} 2>/dev/null
-echo "# LINUX_TOOLBOX_INITED" >> /tmp/${R}
-echo '[ -z "${LINUX_TOOLBOX_INITED}" -a "${-#*i}" = "$-" ] && source '"${TARGET}" >> /tmp/${R}
-cat /tmp/${R} > ~/.bashrc
+echo "# LINUX_TOOLBOX_INITED" >>/tmp/${R}
+echo '[ -z "${LINUX_TOOLBOX_INITED}" -a "${-#*i}" = "$-" ] && source '"${TARGET}" >>/tmp/${R}
+cat /tmp/${R} >~/.bashrc
 unlink /tmp/${R}
 ### end
 
-echo "complete, try start it."
+echo -n "complete, try start it - "
 
-LINUX_TOOLBOX_INITED=
+source "${TARGET}" ||
+	{
+		unlink "${TARGET}"
+		die "can't start scripts, install failed."
+	}
 
-source "${TARGET}" || \
-	{ unlink "${TARGET}" ; die "can't start scripts, install failed."; }
-
-echo -en "PATH:\n    "
-echo "$PATH" | sed 's/:/\n    /g'
-
-echo "startup ok."
+echo "ok."

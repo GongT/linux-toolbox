@@ -6,14 +6,16 @@ if [[ "$*" = "on" ]]; then
 		echo "   use proxy set before this.">&2
 	else
 		export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY} NO_PROXY="10.*,192.*,127.*,172.*"
-		echo "Using proxy server $PROXY." >&2
+		echo "Using proxy server $PROXY" >&2
 	fi
 elif [ "$*" = "off" ]; then
 	unset https_proxy http_proxy all_proxy HTTPS_PROXY HTTP_PROXY ALL_PROXY NO_PROXY
 
 	echo "Proxy server unset." >&2
+elif [ "$1" = "get" ]; then
+	echo "$PROXY"
 elif [ "$1" = "set" ]; then
-	echo "export PROXY='$2'" | tee "/etc/profile.d/00-environment.sh"
+	envfile-system PROXY "$2"
 	export PROXY="$2"
 elif [ "$*" = "test" ]; then
 	if [[ -z "$HTTP_PROXY" ]]; then
@@ -27,6 +29,5 @@ elif [ "$*" = "test" ]; then
 	fi
 else
 	echo -e "not support: $*" >&2
-	echo -e "Usage: proxy [on|off|set|test]" >&2
+	echo -e "Usage: proxy [on|off|set|get|test]" >&2
 fi
-

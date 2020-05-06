@@ -1,4 +1,0 @@
-#!/bin/sh
-
-docker images --format "table {{.ID}}\t{{.Repository}}:{{.Tag}}\t{{.Size}}"
-

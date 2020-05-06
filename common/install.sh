@@ -1,68 +1,34 @@
 #!/bin/sh
 
-emit '#!/bin/bash
-
-if [[ -z "$__L_INST" ]]; then
-	if [ "$0" != "-bash" ] && [ "$0" != "bash" ] && [ "$0" != "/bin/bash" ] && [ "$0" != "/usr/bin/bash" ]; then
-		return
-	fi
-	case "$-" in
-	*i*)
-		# This shell is interactive
-		;;
-	*)
-		# This shell is not interactive
-		if [[ "$PROXY" ]] && [[ "$VSCODE_AGENT_FOLDER" ]]; then
-			export http_proxy="$PROXY" https_proxy="$PROXY"
-		fi
-		return
-		;;
-	esac
-
-	if [[ -n "${LINUX_TOOLBOX_INITED}" ]]; then
-		return
-	fi
+emit '#!/bin/bash'
+emit_file "functions/prefix.sh"
+emit "
+if [[ \"\${MY_SCRIPT_ROOT+found}\" != 'found' ]]; then
+	declare -xr MY_SCRIPT_ROOT='${INSTALL_SCRIPT_ROOT}'
 fi
-declare +x LINUX_TOOLBOX_INITED=yes
+"
+emit_file "functions/basic.sh"
+emit_file "functions/terminal.sh"
 
-if [[ ":$PATH:" != *":/usr/local/bin:"* ]] ; then
-	export PATH+=:/usr/local/bin
+emit_file "functions/command.sh"
+source "${HERE}/functions/command.sh"
+
+if [[ -e "/bin/cygpath.exe" ]]; then
+	emit_file "functions/root-user.cygwin.sh"
+else
+	emit_file "functions/root-user.linux.sh"
 fi
-'
 
-emit "export MY_SCRIPT_ROOT='${INSTALL_SCRIPT_ROOT}'"
+emit_file "advance/environment-file.sh"
+emit_file "advance/prompt-command.sh"
 
-emit '
-
-function __FILE__() {
-	echo "$(realpath "${BASH_SOURCE[0]}")"
-}
-function __DIR__() {
-	echo "$(dirname $(realpath "${BASH_SOURCE[0]}") )"
-}
-
-function die() {
-	echo "" >&2
-	echo "$@" >&2
-	exit 1
-}
-
-function find_command() {
-	env sh --noprofile --norc -c "command -v \"$@\"" -- "$1"
-}
-function command_exists() {
-	find_command "$1" &>/dev/null
-}
-
-'
-
-emit_file "functions/list.sh"
-emit_file "functions/path-var.sh"
-
-unset LINUX_TOOLBOX_INITED
-__L_INST=yes
-source ${TARGET} || die "start fail, bad header: ${TARGET}"
-unset __L_INST LINUX_TOOLBOX_INITED
+emit_file "advance/list.sh"
+emit_file "advance/path-var.sh"
+emit "path-var add /usr/local/bin"
 
 emit_file "bash-config/exclude-list-dll.sh"
 emit_file "bash-config/history.sh"
+
+emit_file "advance/machine-name.sh"
+mkdir -p /etc/ssh/ssh_config.d
+echo "SendEnv DISPLAY REMOTE_PATH" >/etc/ssh/ssh_config.d/80-linux-toolbox.conf

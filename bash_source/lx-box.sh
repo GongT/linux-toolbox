@@ -2,8 +2,10 @@
 
 function update {
 	bash ${MY_SCRIPT_ROOT}/install_environment.sh
-	unset LINUX_TOOLBOX_INITED
+	echo "really starting..."
+	local -r _INSTALL_LEVEL_=1
 	source /etc/profile.d/01-linux-toolbox.sh
+	echo "Done."
 }
 
 
@@ -16,7 +18,7 @@ function update {
 
 
 
-case $1 in
+case "${1-not set}" in
 update)
 	update
 ;;

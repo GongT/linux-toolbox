@@ -19,6 +19,9 @@ function path-var() {
 		add-rel)
 			list add PATH "${OPDIR}"
 		;;
+		has)
+			list has PATH
+		;;
 		dump)
 			list dump PATH
 		;;

@@ -1,3 +1,0 @@
-#!/bin/bash
-
-export PROMPT_COMMAND="echo -en \"\e]0;\$($@)\007\""

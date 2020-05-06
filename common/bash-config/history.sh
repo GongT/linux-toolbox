@@ -9,12 +9,14 @@ HISTFILESIZE=2000000
 # Append to history instead of overwrite
 shopt -s histappend
 # Ignore redundant or space commands
-HISTCONTROL=ignoreboth
+HISTCONTROL=ignoredups
 # Ignore more
-HISTIGNORE='ls:ll:ls -alh:pwd:clear:history'
+HISTIGNORE='ls:ll:rm -rf *:rm -f *:poweroff:reboot:systemctl reboot:systemctl poweroff:pwd:clear:history'
 # Set time format
 HISTTIMEFORMAT='%F %T '
 # Multiple commands on one line show up as a single line
 shopt -s cmdhist
 # Append new history lines, clear the history list, re-read the history list, print prompt.
-export PROMPT_COMMAND="history -a; history -c; history -r; $PROMPT_COMMAND"
+PROMPT_COMMAND_ACTIONS[history1]='history -a'
+# PROMPT_COMMAND_ACTIONS[history2]='history -c'
+# PROMPT_COMMAND_ACTIONS[history3]='history -r'
