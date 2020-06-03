@@ -44,11 +44,12 @@ function pps() {
 case $1 in
 ps)
 	shift
-	pps 'table {{.Names}} {{.ID}} {{.Status}}' "$@"
+	pps 'table {{.Names}} {{.ID}} {{.Status}}' "$@" | sed 's/&gt;/>/g'
 ;;
 pss)
 	shift
-	pps 'table {{.Names}} {{.ID}} {{.Image}} {{.Status}}' "$@"
+	pps "table {{.Names}} {{.ID}} {{.Image}} {{.Status}}<nltab>Ports:{{.Ports}}<nltab>Mounts:{{.Mounts }}" "$@" \
+		| sed -E 's/<nltab>/\n\t/g; s/^\s*(Ports|Mounts):\s*\n//mg; s/(Ports|Mounts):.+/\x1B[2m\0\x1B[0m/mg; s/^\S+/\x1B[38;5;14m\0\x1B[0m/mg'
 ;;
 psss)
 	shift
