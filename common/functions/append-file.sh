@@ -39,22 +39,16 @@ function append_text_file_line() {
 
 	ensure_file_exists "$FILE"
 
-	local PATTERN="^${COMMENT_TYPE}${COMMENT_TYPE} ${MARKUP}$"
-	if grep -q "$PATTERN" "$FILE"; then
-		local SED_PATT="${PATTERN//\//\\/}"
-		sed -i "/$SED_PATT/{
-			a\\
-$CONTENT
-			n
-			d
-		}" "$FILE"
+	local TAG=" ${COMMENT_TYPE}${COMMENT_TYPE} ${MARKUP}"
+	local PATTERN="${TAG}$"
+	local SAFE_PATT="${PATTERN//\//\\/}"
+	if grep -q "$SAFE_PATT" "$FILE"; then
+		CONTENT="${CONTENT//'\'/'\\'}"
+		sed -i "s/^.*$SAFE_PATT/${CONTENT}${TAG}/g" "$FILE"
 	else
 		if is_file_need_newline "$FILE"; then
 			echo "" >> "$FILE"
 		fi
-		{
-			echo "${COMMENT_TYPE}${COMMENT_TYPE} ${MARKUP}"
-			echo "$CONTENT"
-		} >> "$FILE"
+		echo "${CONTENT}${TAG}" >> "$FILE"
 	fi
 }
