@@ -8,6 +8,7 @@ if [[ \"\${MY_SCRIPT_ROOT+found}\" != 'found' ]]; then
 fi
 "
 emit_file "functions/basic.sh"
+emit_file "functions/append-file.sh"
 emit_file "functions/terminal.sh"
 
 emit_file "functions/command.sh"

@@ -55,6 +55,11 @@ function emit_source() {
 function emit_alias_sudo() { # command line ...
 	emit "alias $1='\${SUDO}$@'"
 }
+function emit_alias_sudo2() { # command line ...
+	local NAME=$1
+	shift
+	emit "alias $NAME='\${SUDO}$@'"
+}
 function copy_bin() {
 	chmod a+x "${_INSTALLING_}/$1"
 	local F="${_INSTALLING_}/$1"
