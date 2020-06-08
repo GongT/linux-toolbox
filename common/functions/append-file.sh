@@ -58,5 +58,3 @@ $CONTENT
 		} >> "$FILE"
 	fi
 }
-
-append_text_file_section test.md '#' wow "$(< aaa)"$'\t\t\e[38;5;9masd\e[0masd'
