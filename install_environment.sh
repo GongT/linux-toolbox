@@ -14,8 +14,8 @@ function pad() {
 	for ((i = 0; i < $1; i++)); do echo -n '  '; done
 }
 
-cd $(dirname ${BASH_SOURCE}) ||
-	die "internal error: can't get script folder"
+cd $(dirname ${BASH_SOURCE}) \
+	|| die "internal error: can't get script folder"
 
 export INSTALL_SCRIPT_ROOT=$(pwd)
 export _INSTALLING_=$(pwd)
@@ -29,28 +29,28 @@ fi
 
 TARGET=/etc/profile.d/01-linux-toolbox.sh
 function emit() {
-	echo "$@" >>"${TARGET}"
+	echo "$@" >> "${TARGET}"
 }
 function emit_stdin() {
-	cat >>"${TARGET}"
+	cat >> "${TARGET}"
 }
 function emit_file() {
-	cat "${_INSTALLING_}/$1" | grep -vE '^#!' >>"${TARGET}"
+	cat "${_INSTALLING_}/$1" >> "${TARGET}"
 }
 function emit_source() {
 	local CMD=$1
 	shift
 
-	echo -n "source ${VAR_HERE}/$CMD.sh" >>"${TARGET}"
+	echo -n "source ${VAR_HERE}/$CMD.sh" >> "${TARGET}"
 	if [[ $# -eq 0 ]]; then
-		echo -n ' ""' >>"${TARGET}"
+		echo -n ' ""' >> "${TARGET}"
 	else
 		for i in "$@"; do
-			echo -n " '$i'" >>"${TARGET}"
+			echo -n " '$i'" >> "${TARGET}"
 		done
 	fi
 
-	echo "" >>"${TARGET}"
+	echo "" >> "${TARGET}"
 }
 function emit_alias_sudo() { # command line ...
 	emit "alias $1='\${SUDO}$@'"
@@ -92,8 +92,8 @@ function install_script() {
 	local PWD=$(pwd)
 	echo -e "$(pad ${_INSTALL_LEVEL_-0})installing \e[38;5;11m.${PWD/"$INSTALL_SCRIPT_ROOT"/}/${FOLDER}/${2-install}.sh\e[0m ..."
 
-	pushd "${FOLDER}" >/dev/null ||
-		die "can't run install script: $(pwd)/${FOLDER}"
+	pushd "${FOLDER}" > /dev/null \
+		|| die "can't run install script: $(pwd)/${FOLDER}"
 	local _INSTALLING_=$(pwd) HERE=$(pwd)
 	local VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$INSTALL_SCRIPT_ROOT"/}"
 
@@ -110,7 +110,7 @@ function install_script() {
 	[[ "${2+found}" = found ]] && echo -n " -> $2"
 	echo -e " - \e[38;5;10mOK!\e[0m"
 
-	popd >/dev/null
+	popd > /dev/null
 	_INSTALLING_=$(pwd) HERE=$(pwd)
 	VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$INSTALL_SCRIPT_ROOT"/}"
 }
@@ -146,17 +146,17 @@ install_script user
 
 echo "write bashrc"
 R=${RANDOM}
-grep -v "LINUX_TOOLBOX_INITED" ~/.bashrc >/tmp/${R} 2>/dev/null
-echo "# LINUX_TOOLBOX_INITED" >>/tmp/${R}
-echo '[ -z "${LINUX_TOOLBOX_INITED}" -a "${-#*i}" = "$-" ] && source '"${TARGET}" >>/tmp/${R}
-cat /tmp/${R} >~/.bashrc
+grep -v "LINUX_TOOLBOX_INITED" ~/.bashrc > /tmp/${R} 2> /dev/null
+echo "# LINUX_TOOLBOX_INITED" >> /tmp/${R}
+echo '[ -z "${LINUX_TOOLBOX_INITED}" -a "${-#*i}" = "$-" ] && source '"${TARGET}" >> /tmp/${R}
+cat /tmp/${R} > ~/.bashrc
 unlink /tmp/${R}
 ### end
 
 echo -n "complete, try start it - "
 
-source "${TARGET}" ||
-	{
+source "${TARGET}" \
+	|| {
 		unlink "${TARGET}"
 		die "can't start scripts, install failed."
 	}

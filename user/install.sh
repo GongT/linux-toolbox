@@ -4,7 +4,7 @@ emit_file vscode.sh
 emit_file sshd.sh
 
 source sshd.sh
-VALUES="DISPLAY SSH_CLIENT_IP REMOTE_PATH SSH_ORIGIN_MACHINE"
+VALUES="DISPLAY SSH_CLIENT_IP REMOTE_PATH SSH_ORIGIN_MACHINE VSCODE_CWD USERNAME"
 sshd-allow-environment linux-toolbox-inserted "$VALUES"
 
 mkdir -p /etc/ssh/ssh_config.d

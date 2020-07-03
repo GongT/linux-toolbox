@@ -1,6 +1,33 @@
 #!/bin/sh
 
 emit '#!/bin/bash'
+
+emit_stdin <<- "BASH_TEST"
+	case "$0" in
+	*bash*)
+		# is BASH, run it
+		;;
+	*)
+		return # not using BASH
+	esac
+	
+BASH_TEST
+
+emit_stdin << "INTERACTIVE_TEST_A"
+case "$-" in
+*i*)
+	# This shell is interactive
+	;;
+*)
+INTERACTIVE_TEST_A
+emit_file "special/vscode-server.sh"
+emit_stdin << "INTERACTIVE_TEST_B"
+	# This shell is not interactive
+	return
+esac
+
+INTERACTIVE_TEST_B
+
 emit_file "functions/prefix.sh"
 emit "
 if [[ \"\${MY_SCRIPT_ROOT+found}\" != 'found' ]]; then
@@ -8,6 +35,9 @@ if [[ \"\${MY_SCRIPT_ROOT+found}\" != 'found' ]]; then
 fi
 "
 emit_file "functions/basic.sh"
+source "${HERE}/functions/basic.sh"
+register_exit_handle
+
 emit_file "functions/append-file.sh"
 emit_file "functions/terminal.sh"
 
