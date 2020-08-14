@@ -20,6 +20,7 @@ case "$-" in
 	;;
 *)
 INTERACTIVE_TEST_A
+copy_libexec "special/vscode-server-prepare.sh" >/dev/null
 emit_file "special/vscode-server.sh"
 emit_stdin << "INTERACTIVE_TEST_B"
 	# This shell is not interactive

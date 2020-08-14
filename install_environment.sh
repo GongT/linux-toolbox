@@ -72,6 +72,14 @@ function copy_bin() {
 	echo ln -s "${F}" "$T"
 	ln -s "${F}" "$T"
 }
+function copy_libexec() {
+	local F="${_INSTALLING_}/$1"
+	local TN="${2-$(basename "${F}")}"
+	local T="/usr/local/libexec/$TN"
+	cat "$F" > "$T"
+	chmod a+x "$T"
+	echo "$T"
+}
 function emit_relpath() {
 	emit "path-var add \"${1}\""
 }
