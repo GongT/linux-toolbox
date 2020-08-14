@@ -25,7 +25,6 @@ function pps() {
 		echo "no container exists."
 		return
 	fi
-	OUT=$(echo "${OUT}" | tail -n +2 )
 	local RUNNING=$(echo "${OUT}" | grep --color=no ' Up [0-9LA]')
 	local EXITED=$(echo "${OUT}" | grep --color=no -v ' Up [0-9LA]')
 	if [[ -n "$RUNNING" ]] ; then

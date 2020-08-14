@@ -9,13 +9,13 @@ if [[ "$USERNAME" ]]; then
 
 	declare -xr VSCODE_SERVER_HACK_ROOT=/data/AppData/VSCodeRemote
 
-	function ns_exec() {
-		set -x
-		unshare --pid --fork --kill-child --mount-proc --propagation=unchanged "$@"
-	}
+	mkdir -p "$VSCODE_SERVER_HACK_ROOT"
 
 	function bash() {
-		sed "s|export VSCODE_AGENT_FOLDER=|export VSCODE_AGENT_FOLDER=$VSCODE_SERVER_HACK_ROOT # |g" \
-			| ns_exec /usr/bin/bash "$@"
+		set -x
+		systemd-run --pipe --quiet --wait --collect \
+			--property="BindPaths=$VSCODE_SERVER_HACK_ROOT:$HOME/.vscode-server-insiders" \
+			--property="BindPaths=$VSCODE_SERVER_HACK_ROOT:$HOME/.vscode-server" \
+			/usr/bin/bash -x
 	}
 fi
