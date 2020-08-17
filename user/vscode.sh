@@ -6,7 +6,11 @@ if command -v run-windows &>/dev/null ; then
 	fi
 elif [[ "$VSCODE_SERVER_HACK_ROOT" ]] || [[ "$PATH" =~ "/.vscode-server" ]]; then
 	proxy on
-	if command_exists code-insiders && ! command_exists code ; then
-		ln -s code-insiders "$(dirname "$(find_command code-insiders)")/code"
+	if command_exists code-insiders ; then
+		P=$(find_command code-insiders)
+		if ! [[ -f "$(dirname "$P")/code" ]]; then
+			ln -s code-insiders "$(dirname "$P")/code"
+		fi
+		unset P
 	fi
 fi
