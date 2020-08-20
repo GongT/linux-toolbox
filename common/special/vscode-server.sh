@@ -1,4 +1,4 @@
-while [[ "$USERNAME" ]]; do
+if [[ "$USERNAME" ]]; then
 	set -x
 	echo "Detected VSCode session; USERNAME=$USERNAME; SSH process PID is $$" >&2
 	unset USERNAME
@@ -9,28 +9,33 @@ while [[ "$USERNAME" ]]; do
 	fi
 
 	if mountpoint "$HOME/.vscode-server" ; then
-		break
+		return
 	fi
 
 	declare -xr VSCODE_SERVER_HACK_ROOT=/data/AppData/VSCodeRemote
-	declare -xr PID_FILE=/run/vscode-server.pid
-	export TMPDIR="/tmp/vscode-server"
-	mkdir -p "$VSCODE_SERVER_HACK_ROOT"
+	declare -xr TMPDIR="/tmp/vscode-server"
+	declare -xr PID_FILE="/run/vscode-server.pid"
 
 	if ! systemctl is-active vscode-server-holder.service ; then
-		mkdir -p "$HOME/.vscode-server-insiders" "$HOME/.vscode-server"
-		systemd-run --collect --unit=vscode-server-holder.service \
+		mkdir -p "$VSCODE_SERVER_HACK_ROOT"
+		systemd-run --slice=vscode.slice --collect --unit=vscode-server-holder.service \
 			"--setenv=VSCODE_SERVER_HACK_ROOT=$VSCODE_SERVER_HACK_ROOT" \
+			"--setenv=PATH=/tmp/.vscode-bin-wrapper:$PATH" \
 			"--setenv=HOME=$HOME" \
-			"--setenv=PID_FILE=$PID_FILE" \
 			"--setenv=TMPDIR=$TMPDIR" \
-			"--property=CPUWeight=70" \
 			"--property=PIDFile=$PID_FILE" \
+			"--property=CPUWeight=70" \
 			"--property=NotifyAccess=all" \
-			--service-type=notify \
-			unshare --cgroup --mount --kill-child=SIGTERM /usr/bin/bash -x "/usr/local/libexec/vscode-server-prepare.sh"
+			"--property=PrivateDevices=yes" \
+			"--property=KillMode=control-group" \
+			"--property=PrivateMounts=yes" \
+			"--property=TemporaryFileSystem=$TMPDIR" \
+			"--property=BindPaths=$VSCODE_SERVER_HACK_ROOT:$HOME/.vscode-server" \
+			"--property=BindPaths=$VSCODE_SERVER_HACK_ROOT:$HOME/.vscode-server-insiders" \
+			"--service-type=simple" \
+			/usr/bin/bash -c 'echo $$$$ > "$$PIDFILE"; while true; do sleep infinity ; done'
 		sleep 2
-		rmdir "$HOME/.vscode-server-insiders" "$HOME/.vscode-server" &>/dev/null
+		# rmdir "$HOME/.vscode-server-insiders" "$HOME/.vscode-server" &>/dev/null
 	fi
 
 	function bash() {
@@ -43,10 +48,10 @@ while [[ "$USERNAME" ]]; do
 		if nsenter --mount --target "$PID" mountpoint "$HOME/.vscode-server" &>/dev/null ; then
 			exec nsenter --no-fork "--wd=$(pwd)" --all --target "$PID" /usr/bin/bash
 		else
-			echo "something wrong in _vscode-server-prepare, see log of vscode-server-holder.service"
+			echo "something wrong in vscode-server-holder.service"
 			exit 1
 		fi
 	}
 	set +x
 	echo "BASH replaced." >&2
-done
+fi

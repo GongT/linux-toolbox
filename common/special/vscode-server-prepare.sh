@@ -3,10 +3,11 @@
 set -Eeuo pipefail
 
 if [[ "${VSCODE_SERVER_HACK_ROOT+found}" != found ]]; then
-	echo "this script is call by service"
+echo "this script must call by service"
 	exit 1
 fi
 
+mkdir -p "$HOME/.vscode-server-insiders" "$HOME/.vscode-server"
 
 export PATH="/tmp/.vscode-bin-wrapper:$PATH"
 
@@ -25,4 +26,3 @@ systemd-notify --ready
 while true ; do
 	sleep 3600
 done
-
