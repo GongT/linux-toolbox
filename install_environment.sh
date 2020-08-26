@@ -1,6 +1,28 @@
 #!/bin/bash
 
 set -Eeuo pipefail
+shopt -s lastpipe
+
+function callstack() {
+	local -i SKIP=${1-1}
+	local -i i
+	for i in $(seq $SKIP $((${#FUNCNAME[@]} - 1))); do
+		if [[ "${BASH_SOURCE[$((i + 1))]+found}" = "found" ]]; then
+			echo "  $i: ${BASH_SOURCE[$((i + 1))]}:${BASH_LINENO[$i]} ${FUNCNAME[$i]}()"
+		else
+			echo "  $i: ${FUNCNAME[$i]}()"
+		fi
+	done
+}
+function _exit_handle() {
+	RET=$?
+	echo -ne "\e[0m"
+	if [[ "$RET" -ne 0 ]]; then
+		callstack 1
+	fi
+	exit $RET
+}
+trap _exit_handle EXIT
 
 echo "starting installer...."
 
@@ -60,17 +82,34 @@ function emit_alias_sudo2() { # command line ...
 	shift
 	emit "alias $NAME='\${SUDO}$@'"
 }
+function copy_bin_with_env() {
+	local ENV="$1"
+	local SRC="$2"
+	local DST="${3-$(basename "$SRC")}"
+	local F="${_INSTALLING_}/$SRC"
+	local T="${GEN_BIN_PATH}/$DST"
+	rm -f "$T"
+	{
+		head -n 1 "$F"
+		echo
+		echo "$ENV"
+		echo
+		tail -n +2 "$F"
+	} > "$T"
+	chmod a+x "$T"
+}
 function copy_bin() {
-	chmod a+x "${_INSTALLING_}/$1"
-	local F="${_INSTALLING_}/$1"
-	local TN="${2-$(basename "${F}")}"
-	local T="${GEN_BIN_PATH}/$TN"
+	local SRC="$1"
+	local DST="${2-$(basename "$SRC")}"
+	local F="${_INSTALLING_}/$SRC"
+	local T="${GEN_BIN_PATH}/$DST"
 	if [[ -e "$T" ]] && [[ "$(readlink "$T")" = "$F" ]]; then
 		return
 	fi
 	rm -f "$T"
-	echo ln -s "${F}" "$T"
+	# echo ln -s "${F}" "$T"
 	ln -s "${F}" "$T"
+	chmod a+x "$F"
 }
 function copy_libexec() {
 	local F="${_INSTALLING_}/$1"
@@ -92,7 +131,7 @@ function emit_path() {
 	chmod a+rx "$PA"
 
 	local P="\$MY_SCRIPT_ROOT/$1"
-	emit "path-var add \"${P}\""
+	emit "path-var prepend \"${P}\""
 }
 function install_script() {
 	local FOLDER="${1}"
@@ -130,8 +169,6 @@ echo "create ${TARGET}"
 echo ": common tools..."
 install_script common
 
-emit_path bin
-
 echo ": system-spec tools..."
 install_script system
 
@@ -145,9 +182,6 @@ echo ": applications..."
 for FILE in "${INSTALL_SCRIPT_ROOT}/applications/"*.sh; do
 	install_script applications $(basename "$FILE" .sh)
 done
-emit_path .bin
-
-emit "export PATH"
 
 echo ": user apps..."
 install_script user

@@ -9,7 +9,7 @@ function set-prompt() {
 		else
 			VAL="$(hostname)"
 		fi
-		envfile-system PROMPT_VALUE ''
+		envfile-system PROMPT_VALUE "$VAL"
 	else
 		envfile-system PROMPT_VALUE "$VAL"
 	fi

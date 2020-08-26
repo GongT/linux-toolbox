@@ -3,30 +3,46 @@
 function path-var() {
 	local ACTION="$1"
 	local OPDIR="$2"
-	
+
 	case $1 in
-		del)
-			list del PATH "${OPDIR}"
-			if [[ "${OPDIR:0:1}" != "/" ]]; then
-				list del PATH "$(realpath -m "${OPDIR}")"
-			fi
+	del)
+		list del PATH "${OPDIR}"
+		if [[ "${OPDIR:0:1}" != "/" ]]; then
+			list del PATH "$(realpath -m "${OPDIR}")"
+		fi
 		;;
-		add)
-			if [[ "${OPDIR:0:1}" != "/" ]]; then
-				OPDIR=$(realpath -m "${OPDIR}")
-			fi
+	add)
+		if [[ "${OPDIR:0:1}" != "/" ]]; then
+			OPDIR=$(realpath -m "${OPDIR}")
+		fi
 		;&
-		add-rel)
-			list add PATH "${OPDIR}"
+	add-rel)
+		list add PATH "${OPDIR}"
 		;;
-		has)
-			list has PATH
+	prepend)
+		if [[ "${OPDIR:0:1}" != "/" ]]; then
+			OPDIR=$(realpath -m "${OPDIR}")
+		fi
+		list del PATH "${OPDIR}"
+		list prepend PATH "${OPDIR}"
 		;;
-		dump)
-			list dump PATH
+	has)
+		list has PATH
 		;;
-		*)
-			echo '
+	dump)
+		list dump PATH
+		;;
+	normalize)
+		local P="$PATH"
+		local PO=""
+		local IFS=$'\n'
+		for LINE in $(list dump P); do
+			list add PO "$LINE"
+		done
+		PATH="$PO"
+		;;
+	*)
+		echo '
 
 $PATH environment edit
 add:    path-var add /some/path
@@ -37,7 +53,7 @@ has:    path-var has /some/path
 dump:   path-var dump
 
 ' >&2
-			return 1
+		return 1
 		;;
 	esac
 }

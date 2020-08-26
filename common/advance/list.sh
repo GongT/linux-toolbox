@@ -66,11 +66,12 @@ function list() {
 
 Unknown action: '$ACTION'
 colon-separated list edit tool:
-	add:      list add  SOME_VAR value
-	delete:   list del  SOME_VAR value
-	get size: list size SOME_VAR
-	has:      list has  SOME_VAR value
-	dump:     list dump SOME_VAR
+	add:      list add        SOME_VAR value
+	add:      list prepend    SOME_VAR value
+	delete:   list del        SOME_VAR value
+	get size: list size       SOME_VAR
+	has:      list has        SOME_VAR value
+	dump:     list dump       SOME_VAR
 " >&2
 			RET=1
 		;;

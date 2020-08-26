@@ -28,6 +28,13 @@ esac
 
 INTERACTIVE_TEST_B
 
+declare -f die callstack _exit_handle | emit_stdin
+emit "
+function sample_show_callstack_on_error() {
+	trap _exit_handle EXIT	
+}
+"
+
 emit_file "functions/prefix.sh"
 emit "
 if [[ \"\${MY_SCRIPT_ROOT+found}\" != 'found' ]]; then
@@ -56,8 +63,12 @@ emit_file "advance/prompt-command.sh"
 emit_file "advance/list.sh"
 emit_file "advance/path-var.sh"
 emit "path-var add /usr/local/bin"
+source "${HERE}/advance/list.sh"
+source "${HERE}/advance/path-var.sh"
 
 emit_file "bash-config/exclude-list-dll.sh"
 emit_file "bash-config/history.sh"
 
 emit_file "advance/machine-name.sh"
+
+emit_file "bash-config/path-config.sh"
