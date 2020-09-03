@@ -58,6 +58,7 @@ else
 fi
 
 emit_file "advance/environment-file.sh"
+emit_file "advance/keyvalue-file.sh"
 emit_file "advance/prompt-command.sh"
 
 emit_file "advance/list.sh"
