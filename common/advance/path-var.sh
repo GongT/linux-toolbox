@@ -1,10 +1,10 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 function path-var() {
 	local ACTION="$1"
 	local OPDIR="$2"
 
-	case $1 in
+	case $ACTION in
 	del)
 		list del PATH "${OPDIR}"
 		if [[ "${OPDIR:0:1}" != "/" ]]; then
