@@ -4,7 +4,7 @@ if command -v run-windows &>/dev/null ; then
 	elif run-windows command_exists code-insiders.cmd ; then
 		alias code="run-cygpath code-insiders.cmd"
 	fi
-elif [[ "$VSCODE_SERVER_HACK_ROOT" ]] || [[ "$PATH" =~ "/.vscode-server" ]]; then
+elif [[ "${VSCODE_SERVER_HACK_ROOT+found}" == found ]] || [[ "$PATH" =~ "/.vscode-server" ]]; then
 	proxy on
 	if command_exists code-insiders ; then
 		P=$(find_command code-insiders)
