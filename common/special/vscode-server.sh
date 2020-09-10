@@ -20,7 +20,7 @@ if [[ "$USERNAME" ]]; then
 	fi
 	echo "VSCode Server files save to: $VSCODE_SERVER_HACK_ROOT" >&2
 	declare -xr VPATH="$(mktemp --dir)"
-	declare -xr TMPDIR="/tmp/vscode-server"
+	declare -x TMPDIR="/tmp/vscode-server"
 	declare -xr PID_FILE="/run/vscode-server.pid"
 	export PATH="$VPATH:$PATH"
 

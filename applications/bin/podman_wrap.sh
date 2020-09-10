@@ -7,6 +7,8 @@ fi
 PODMAN=$1
 shift
 
+BACKUP_PATH="${SYSTEM_COMMON_BACKUP:-/data/Backup}/containers"
+
 function clean_images() {
 	echo -e "\e[38;5;5mremoving images:\e[0m"
 	"${PODMAN}" images | grep -E '<none>' | awk '{print $3}' | xargs --no-run-if-empty --verbose --no-run-if-empty "${PODMAN}" rmi
@@ -14,6 +16,60 @@ function clean_images() {
 function clear_stopped_container() {
 	echo -e "\e[38;5;5mremoving containers:\e[0m"
 	"${PODMAN}" ps -a | tail -n +2 | grep -v Up | awk '{print $1}' | xargs --no-run-if-empty --verbose --no-run-if-empty "${PODMAN}" rm
+}
+
+function get_backup_label() {
+	local FILE=$1
+	local LABEL=${FILE#$BACKUP_PATH}
+	LABEL=$(dirname "$LABEL")
+	LABEL=${LABEL#/}
+	echo "$LABEL/$(basename "$FILE" .tar.gz)"
+}
+function get_label_name() {
+	local LBL=$1
+	echo "${X%:*}"
+}
+function get_label_tag() {
+	local LBL=$1
+	echo "${X#*:}"
+}
+
+function do_backup() {
+	local ACTION=${1:-}
+
+	if [[ "$ACTION" == 'create' ]]; then
+		local IMGS=() I OUT
+
+		mapfile -t IMGS < <("${PODMAN}" images | tail -n +2 | grep -v '<none>' | awk '{print $1":"$2}')
+
+		echo "backup directory: $BACKUP_PATH"
+		for I in "${IMGS[@]}"; do
+			echo "Backup image: $I"
+			OUT="$BACKUP_PATH/${I}.tar.gz"
+			mkdir -p "$(dirname "$OUT")"
+			podman save "$I" | pv > "$OUT" || {
+				echo "failed."
+				return 1
+			}
+		done
+	elif [[ "$ACTION" == 'restore' ]]; then
+		mkdir -p "$BACKUP_PATH"
+
+		local FILES I TMPDIR="$TMPDIR/podman" LBL
+		mkdir -p "$TMPDIR"
+		cd "$TMPDIR"
+
+		echo "backup directory: $BACKUP_PATH"
+		mapfile -t FILES < <(find "$BACKUP_PATH" -type f)
+
+		for I in "${FILES[@]}"; do
+			LBL=$(get_backup_label "$I")
+			pv "$I" | podman load --quiet "$LBL"
+		done
+	else
+		echo "Usage: podman backup <create|restore>${ACTION+$'\n'"  Invalid action: $ACTION"}"
+		exit 1
+	fi
 }
 
 function pps() {
@@ -87,6 +143,10 @@ pull)
 	else
 		"${PODMAN}" pull "$@"
 	fi
+	;;
+backup)
+	shift
+	do_backup "$@"
 	;;
 *)
 	"${PODMAN}" "$@"
