@@ -29,6 +29,10 @@ function parse_provide_file_arg() {
 		ARGS+=("/usr/lib64/$ARG")
 		return
 	fi
+	if arg | grep -iqE '\.h$' ; then
+		ARGS+=("/usr/include/*/$ARG")
+		return
+	fi
 	if arg | grep -qE '[^/.]+$' ; then
 		ARGS+=("*/bin/$ARG")
 		ARGS+=("*/sbin/$ARG")

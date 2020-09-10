@@ -9,11 +9,11 @@ shift
 
 function clean_images() {
 	echo -e "\e[38;5;5mremoving images:\e[0m"
-	podman images | grep -E '<none>' | awk '{print $3}' | xargs --no-run-if-empty --verbose --no-run-if-empty podman rmi
+	"${PODMAN}" images | grep -E '<none>' | awk '{print $3}' | xargs --no-run-if-empty --verbose --no-run-if-empty "${PODMAN}" rmi
 }
 function clear_stopped_container() {
 	echo -e "\e[38;5;5mremoving containers:\e[0m"
-	podman ps -a | tail -n +2 | grep -v Up | awk '{print $1}' | xargs --no-run-if-empty --verbose --no-run-if-empty podman rm
+	"${PODMAN}" ps -a | tail -n +2 | grep -v Up | awk '{print $1}' | xargs --no-run-if-empty --verbose --no-run-if-empty "${PODMAN}" rm
 }
 
 function pps() {
@@ -67,23 +67,23 @@ xrmi)
 	shift
 	WHAT=$1
 	if [[ "$WHAT" ]]; then
-		podman images "$@" --noheading | awk '{print $3}' | xargs -t --no-run-if-empty podman rmi
+		"${PODMAN}" images "$@" --noheading | awk '{print $3}' | xargs -t --no-run-if-empty "${PODMAN}" rmi
 	else
 		echo "Usage: podman xrmi <part of image name>"
 	fi
 	;;
 --help)
 	if [[ $# -ne 1 ]]; then
-		podman "$@"
+		"${PODMAN}" "$@"
 	else
 		echo "This is a wrapper for 'podman'" >&2
-		podman --help
+		"${PODMAN}" --help
 	fi
 	;;
 pull)
 	shift
 	if [[ $# -eq 1 ]] && [[ "$1" = "all" ]]; then
-		podman images | awk '{print $1":"$2}' | grep -- docker.io | xargs --no-run-if-empty -n1 -t podman pull
+		"${PODMAN}" images | awk '{print $1":"$2}' | grep -- docker.io | xargs --no-run-if-empty -n1 -t "${PODMAN}" pull
 	else
 		"${PODMAN}" pull "$@"
 	fi
