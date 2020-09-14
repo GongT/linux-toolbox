@@ -132,6 +132,7 @@ function emit_path() {
 
 	local P="\$MY_SCRIPT_ROOT/$1"
 	emit "path-var prepend \"${P}\""
+	path-var prepend "${P}"
 }
 function install_script() {
 	local FOLDER="${1}"
