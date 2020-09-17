@@ -6,11 +6,15 @@ if command_exists podman; then
 		"PODMAN='$PODMAN'" \
 		"bin/podman_wrap.sh" \
 		"podman"
-	cru a "podman-cleanup" "*/5 * * * * /usr/bin/env bash '$HERE/bin/podman_wrap.sh' clean"
-	cru a "podman-auto-pull" "0 */8 * * * /usr/bin/env bash '$HERE/staff/podman-pull-all.sh'"
+	if command_exists crontab; then
+		cru a "podman-cleanup" "*/5 * * * * /usr/bin/env bash '$HERE/bin/podman_wrap.sh' clean"
+		cru a "podman-auto-pull" "0 */8 * * * /usr/bin/env bash '$HERE/staff/podman-pull-all.sh'"
+	fi
 else
-	cru d "podman-cleanup"
-	cru d "podman-auto-pull"
+	if command_exists crontab; then
+		cru d "podman-cleanup"
+		cru d "podman-auto-pull"
+	fi
 fi
 
 if command_exists buildah; then
