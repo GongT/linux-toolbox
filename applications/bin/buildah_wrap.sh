@@ -1,11 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
 
 if ! [ -t 1 ] || ! [ -t 0 ]; then
-	exec "$@"
+	exec "$BUILDAH" "$@"
 fi
-
-BUILDAH=$1
-shift
 
 _ls_img() {
 	"${BUILDAH}" images --format "table {{.ID}}\t{{.Name}}:{{.Tag}}\t{{.Size}}" "$@"

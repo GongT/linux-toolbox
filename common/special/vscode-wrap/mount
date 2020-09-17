@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+exec nsenter --target 1 --all /usr/bin/mount "$@"

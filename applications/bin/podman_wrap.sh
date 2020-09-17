@@ -1,11 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
 
 if ! [ -t 1 ] || ! [ -t 0 ]; then
-	exec "$@"
+	exec "$PODMAN" "$@"
 fi
-
-PODMAN=$1
-shift
 
 BACKUP_PATH="${SYSTEM_COMMON_BACKUP:-/data/Backup}/containers"
 

@@ -9,9 +9,9 @@ function list() {
 	}
 
 	local RET=0
-	local ACTION="$1"
-	local TARGET_VAR="$2"
-	local VALUE="$3"
+	local ACTION="${1:-}"
+	local TARGET_VAR="${2:-}"
+	local VALUE="${3:-}"
 	if [[ -n "$TARGET_VAR" ]]; then
 		local TARGET_VAR_VALUE="${!TARGET_VAR}"
 	fi

@@ -3,26 +3,56 @@ if [[ "$USERNAME" ]]; then
 		echo "|" >&2
 	done
 	echo "Detected VSCode session; USERNAME=$USERNAME; SSH process PID is $$" >&2
+	echo "Bash Options: $- ; Arguments ($#): $*" >&2
 	unset USERNAME
 
-	if [[ "$PROXY" ]]; then
-		export http_proxy="$PROXY" https_proxy="$PROXY"
-		echo "Using proxy: $PROXY" >&2
-	fi
+	declare -rx LCODE_LIBEXEC="/usr/local/libexec/linux-toolbox/vscode-wrap"
+	source "$LCODE_LIBEXEC/_vscode-server-env.sh"
 
-	if mountpoint "$HOME/.vscode-server"; then
+	if mountpoint -q "$HOME/.vscode-server"; then
 		echo "Already in namespace: $HOME/.vscode-server is mountpoint" >&2
 		return
 	fi
+	
+	mapfile -t PORTS < <(
+		find "$VSCODE_SERVER_HACK_ROOT" -maxdepth 1 -name ".*.log" | \
+		xargs cat | grep -oE 'listening on [[:digit:]]+' | \
+		grep -oE '[[:digit:]]+'
+	)
 
-	if [[ "${VSCODE_SERVER_HACK_ROOT+found}" != found ]]; then
-		declare -xr VSCODE_SERVER_HACK_ROOT=/data/AppData/VSCodeRemote
+	replace_bash() {
+		export TARGET_PID="$1"
+		bash() {
+			echo "[CALL] bash $*" >&2
+			set -x
+			nsenter --target "$TARGET_PID" --mount /usr/bin/bash "$@"
+		}
+		echo "BASH replaced. [target pid $TARGET_PID]" >&2
+	}
+	
+	for P in "${PORTS[@]}" ; do
+		PID=$(lsof -n -i ":$P" | grep LISTEN | awk '{print $2}')
+		if [[ "$PID" ]]; then
+			echo "Found vscode remote server process: $PID" >&2
+			replace_bash "$PID"
+			return
+		fi
+	done
+
+	echo "Did not found any running server..." >&2
+	declare -r PIDFILE="/run/vscode-server-prepare-result.pid"
+	
+	if [[ -e "$PIDFILE" ]]; then
+		echo "Pid file $PIDFILE exists." >&2
+		if nsenter --target "$(< "$PIDFILE")" --all mountpoint "$HOME/.vscode-server" &>/dev/null ; then
+			echo "    And valid" >&2
+			replace_bash "$(< "$PIDFILE")"
+			return
+		else
+			echo "    But invalid" >&2
+		fi
 	fi
-	echo "VSCode Server files save to: $VSCODE_SERVER_HACK_ROOT" >&2
-	declare -xr VPATH="$(mktemp --dir)"
-	declare -x TMPDIR="/tmp/vscode-server"
-	declare -xr PID_FILE="/run/vscode-server.pid"
-	export PATH="$VPATH:$PATH"
+
 
 	{
 		echo "ENV PATH:"
@@ -30,66 +60,10 @@ if [[ "$USERNAME" ]]; then
 		echo "$PATH" | sed 's/:/\n  | /g'
 	} >&2
 
-	mkdir -p "$VPATH"
-	cat > "$VPATH/ps" <<- 'BIN'
-		#!/usr/bin/env bash
-		if echo " $* " | grep -Eiq ' -?o' ; then
-			exec /usr/bin/ps "$@"
-		else
-			declare -i SPID
-			SPID=$(ls -Li /proc/1/ns/pid | awk '{print $1}')
-			exec /usr/bin/ps -O pidns "$@" | grep " $SPID "
-		fi
-	BIN
-	chmod a+x "$VPATH/ps"
-
-	if ! systemctl is-active vscode-server-holder.service &> /dev/null; then
-		echo "Start VSCode Server Holder Service." >&2
-		mkdir -p "$VSCODE_SERVER_HACK_ROOT"
-		systemd-run --slice=vscode.slice --collect --unit=vscode-server-holder.service \
-			"--setenv=VSCODE_SERVER_HACK_ROOT=$VSCODE_SERVER_HACK_ROOT" \
-			"--setenv=PATH=$PATH" \
-			"--setenv=HOME=$HOME" \
-			"--setenv=TMPDIR=$TMPDIR" \
-			"--property=PIDFile=$PID_FILE" \
-			"--property=CPUWeight=70" \
-			"--property=NotifyAccess=all" \
-			"--property=PrivateDevices=yes" \
-			"--property=KillMode=control-group" \
-			"--property=PrivateMounts=yes" \
-			"--property=TemporaryFileSystem=$TMPDIR" \
-			"--property=BindPaths=$VSCODE_SERVER_HACK_ROOT:$HOME/.vscode-server" \
-			"--property=BindPaths=$VSCODE_SERVER_HACK_ROOT:$HOME/.vscode-server-insiders" \
-			"--service-type=simple" \
-			/usr/bin/bash -c 'echo $$$$ > "$$PIDFILE"; while true; do sleep infinity ; done'
-		sleep 2
-		if systemctl is-active vscode-server-holder.service &> /dev/null; then
-			echo "    - ok" >&2
-		else
-			echo "    - not able to start!" >&2
-			systemctl status vscode-server-holder.service --no-pager
-			exit 1
-		fi
-	else
-		echo "VSCode Server Holder is running." >&2
-	fi
-
-	function e() {
-		echo "[!!!] $*" >&2
-		"$@"
-	}
-	function bash() {
-		if ! [[ -f "$PID_FILE" ]]; then
-			echo "unit vscode-server-holder.service can not start." >&2
-			exit 1
-		fi
-		local PID="$(< "$PID_FILE")"
-		if nsenter --mount --target "$PID" mountpoint "$HOME/.vscode-server" &> /dev/null; then
-			e systemd-run --quiet --slice=vscode.slice --collect --scope --same-dir nsenter --no-fork "--wd=$(pwd)" --all --target "$PID" /usr/bin/bash "$@"
-		else
-			echo "something wrong in vscode-server-holder.service ($PID)"
-			exit 1
-		fi
-	}
-	echo "BASH replaced." >&2
+	rm -f "$PIDFILE"
+	unshare --mount --propagation slave bash "$LCODE_LIBEXEC/_vscode-server-prepare.sh" "$PIDFILE" &
+	sleep 5
+	
+	replace_bash "$(< "$PIDFILE")"
+	return
 fi

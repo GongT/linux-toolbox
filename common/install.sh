@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 emit '#!/bin/bash'
 
@@ -10,23 +10,25 @@ emit_stdin <<- "BASH_TEST"
 	*)
 		return # not using BASH
 	esac
-	
+
 BASH_TEST
 
-emit_stdin << "INTERACTIVE_TEST_A"
-case "$-" in
+emit_stdin << INTERACTIVE_TEST_A
+case "\$-" in
 *i*)
 	# This shell is interactive
 	;;
 *)
-INTERACTIVE_TEST_A
-emit_file "special/vscode-server.sh"
-emit_stdin << "INTERACTIVE_TEST_B"
 	# This shell is not interactive
+	$(< "special/vscode-server.sh")
 	return
 esac
 
-INTERACTIVE_TEST_B
+INTERACTIVE_TEST_A
+
+for i in "./special/vscode-wrap/"*; do
+	copy_libexec "$i" "vscode-wrap/$(basename "$i")" > /dev/null
+done
 
 declare -f die callstack _exit_handle | emit_stdin
 emit "
@@ -42,14 +44,11 @@ if [[ \"\${MY_SCRIPT_ROOT+found}\" != 'found' ]]; then
 fi
 "
 emit_file "functions/basic.sh"
-source "${HERE}/functions/basic.sh"
-register_exit_handle
 
 emit_file "functions/append-file.sh"
 emit_file "functions/terminal.sh"
 
 emit_file "functions/command.sh"
-source "${HERE}/functions/command.sh"
 
 if [[ -e "/bin/cygpath.exe" ]]; then
 	emit_file "functions/root-user.cygwin.sh"
@@ -64,8 +63,6 @@ emit_file "advance/prompt-command.sh"
 emit_file "advance/list.sh"
 emit_file "advance/path-var.sh"
 emit "path-var add /usr/local/bin"
-source "${HERE}/advance/list.sh"
-source "${HERE}/advance/path-var.sh"
 
 emit_file "bash-config/exclude-list-dll.sh"
 emit_file "bash-config/history.sh"
@@ -73,3 +70,12 @@ emit_file "bash-config/history.sh"
 emit_file "advance/machine-name.sh"
 
 emit_file "bash-config/path-config.sh"
+
+source "${HERE}/functions/basic.sh"
+source "${HERE}/advance/list.sh"
+source "${HERE}/advance/path-var.sh"
+source "${HERE}/functions/command.sh"
+register_exit_handle
+
+path-var del "$INSTALL_SCRIPT_ROOT/.bin"
+path-var del "/usr/local/libexec/linux-toolbox/vscode-wrap"

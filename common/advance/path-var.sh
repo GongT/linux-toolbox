@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 function path-var() {
-	local ACTION="$1"
-	local OPDIR="$2"
+	local ACTION="${1:-}"
+	local OPDIR="${2:-}"
 
 	case $ACTION in
 	del)

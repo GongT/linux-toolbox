@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+if echo "$*" | grep -iq 'o' ; then
+	exec /usr/bin/ps "$@"
+else
+	declare -i PIDNS
+	PIDNS=$(ls -Li /proc/1/ns/pid | awk '{print $1}')
+	exec /usr/bin/ps -O pidns "$@" | grep " $PIDNS "
+fi

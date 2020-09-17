@@ -74,13 +74,14 @@ function emit_source() {
 
 	echo "" >> "${TARGET}"
 }
+SUDOLIST=()
 function emit_alias_sudo() { # command line ...
-	emit "alias $1='\${SUDO}$@'"
+	SUDOLIST+=("alias $1='sudo $@'")
 }
 function emit_alias_sudo2() { # command line ...
 	local NAME=$1
 	shift
-	emit "alias $NAME='\${SUDO}$@'"
+	SUDOLIST+=("alias $NAME='sudo $@'")
 }
 function copy_bin_with_env() {
 	local ENV="$1"
@@ -114,7 +115,8 @@ function copy_bin() {
 function copy_libexec() {
 	local F="${_INSTALLING_}/$1"
 	local TN="${2-$(basename "${F}")}"
-	local T="/usr/local/libexec/$TN"
+	local T="/usr/local/libexec/linux-toolbox/$TN"
+	mkdir -p "$(dirname "$T")"
 	cat "$F" > "$T"
 	chmod a+x "$T"
 	echo "$T"
@@ -186,6 +188,14 @@ done
 
 echo ": user apps..."
 install_script user
+
+if [[ ${#SUDOLIST[@]} -gt 0 ]]; then
+	emit "if ! is_root ; then"
+	for L in "${SUDOLIST[@]}"; do
+		emit $'\t'"$L"
+	done
+	emit "fi"
+fi
 
 echo "write bashrc"
 R=${RANDOM}
