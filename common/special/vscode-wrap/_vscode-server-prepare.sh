@@ -7,17 +7,21 @@ PIDFILE=$1
 echo -n "$$" > "$PIDFILE"
 
 function d() {
-	echo "$*" >&2
+	echo "[NS] $*" >&2
+}
+function x() {
+	d " + $*"
+	"$@"
 }
 
-d "[NS] Hello! In Namespace! PID=$$"
+d "Hello! In Namespace! PID=$$"
 
 create_ensure() {
 	local F="$1"
-	if ! [[ -e "$F" ]]; then
-		d "[NS] create $F"
+	if ! [[ -d "$F" ]]; then
+		d "create $F"
 		mkdir "$F"
-		chattr +i "$F"
+		x chattr +i "$F"
 	fi
 }
 
@@ -25,17 +29,16 @@ create_ensure "$HOME/.vscode-server-insiders"
 create_ensure "$HOME/.vscode-server"
 
 cd "$HOME"
-d "[NS] bind .vscode-server"
-mount --bind "$VSCODE_SERVER_HACK_ROOT" ".vscode-server"
+d "bind .vscode-server"
+x mount --bind "$VSCODE_SERVER_HACK_ROOT" ".vscode-server"
 
-d "[NS] bind .vscode-server-insiders"
-mount --bind "$VSCODE_SERVER_HACK_ROOT" ".vscode-server-insiders"
+d "bind .vscode-server-insiders"
+x mount --bind "$VSCODE_SERVER_HACK_ROOT" ".vscode-server-insiders"
 
-d "[NS] go sleep"
+d "go sleep"
 sleep 30
-d "[NS] mother process quit"
+d "mother process quit"
 
-rm -f "$PIDFILE"
+x rm -f "$PIDFILE"
 
 sleep 10
-

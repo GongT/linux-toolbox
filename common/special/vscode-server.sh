@@ -7,21 +7,32 @@ if [[ "$USERNAME" ]]; then
 	unset USERNAME
 
 	declare -rx LCODE_LIBEXEC="/usr/local/libexec/linux-toolbox/vscode-wrap"
-	source "$LCODE_LIBEXEC/_vscode-server-env.sh"
+	if [[ "${VSCODE_SERVER_HACK_ROOT+found}" != found ]]; then
+		export VSCODE_SERVER_HACK_ROOT=/data/AppData/VSCodeRemote
+		echo "VSCode Server files save to: $VSCODE_SERVER_HACK_ROOT" >&2
+	fi
+
+	declare -x TMPDIR="/tmp/vscode-server"
+
+	if [[ "$PROXY" ]]; then
+		export http_proxy="$PROXY" https_proxy="$PROXY"
+		echo "Using proxy: $PROXY" >&2
+	fi
 
 	if mountpoint -q "$HOME/.vscode-server"; then
 		echo "Already in namespace: $HOME/.vscode-server is mountpoint" >&2
 		return
 	fi
-	
+
 	mapfile -t PORTS < <(
-		find "$VSCODE_SERVER_HACK_ROOT" -maxdepth 1 -name ".*.log" | \
-		xargs cat | grep -oE 'listening on [[:digit:]]+' | \
-		grep -oE '[[:digit:]]+'
+		find "$VSCODE_SERVER_HACK_ROOT" -maxdepth 1 -name ".*.log" \
+			| xargs cat | grep -oE 'listening on [[:digit:]]+' \
+			| grep -oE '[[:digit:]]+'
 	)
 
 	replace_bash() {
 		export TARGET_PID="$1"
+		export PATH="$LCODE_LIBEXEC:$PATH"
 		bash() {
 			echo "[CALL] bash $*" >&2
 			set -x
@@ -29,8 +40,8 @@ if [[ "$USERNAME" ]]; then
 		}
 		echo "BASH replaced. [target pid $TARGET_PID]" >&2
 	}
-	
-	for P in "${PORTS[@]}" ; do
+
+	for P in "${PORTS[@]}"; do
 		PID=$(lsof -n -i ":$P" | grep LISTEN | awk '{print $2}')
 		if [[ "$PID" ]]; then
 			echo "Found vscode remote server process: $PID" >&2
@@ -41,10 +52,10 @@ if [[ "$USERNAME" ]]; then
 
 	echo "Did not found any running server..." >&2
 	declare -r PIDFILE="/run/vscode-server-prepare-result.pid"
-	
+
 	if [[ -e "$PIDFILE" ]]; then
 		echo "Pid file $PIDFILE exists." >&2
-		if nsenter --target "$(< "$PIDFILE")" --all mountpoint "$HOME/.vscode-server" &>/dev/null ; then
+		if nsenter --target "$(< "$PIDFILE")" --all mountpoint "$HOME/.vscode-server" &> /dev/null; then
 			echo "    And valid" >&2
 			replace_bash "$(< "$PIDFILE")"
 			return
@@ -52,7 +63,6 @@ if [[ "$USERNAME" ]]; then
 			echo "    But invalid" >&2
 		fi
 	fi
-
 
 	{
 		echo "ENV PATH:"
@@ -63,7 +73,7 @@ if [[ "$USERNAME" ]]; then
 	rm -f "$PIDFILE"
 	unshare --mount --propagation slave bash "$LCODE_LIBEXEC/_vscode-server-prepare.sh" "$PIDFILE" &
 	sleep 5
-	
+
 	replace_bash "$(< "$PIDFILE")"
 	return
 fi
