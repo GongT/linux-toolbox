@@ -13,6 +13,7 @@ if [[ "$USERNAME" ]]; then
 	fi
 
 	declare -x TMPDIR="/tmp/vscode-server"
+	mkdir -p "$TMPDIR"
 
 	if [[ "$PROXY" ]]; then
 		export http_proxy="$PROXY" https_proxy="$PROXY"
