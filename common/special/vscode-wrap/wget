@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+while true; do
+	/usr/bin/wget "$@"
+	RET=$?
+	if [[ "$RET" -eq 3 ]] || [[ "$RET" -eq 4 ]] || [[ "$RET" -eq 5 ]] || [[ "$RET" -eq 7 ]] || [[ "$RET" -eq 8 ]]; then
+		echo "[error] [wget $*] return code $RET, retry..." >&2
+		sleep 1
+		continue
+	fi
+
+	if [[ "$RET" -ne 0 ]]; then
+		echo "[error] [wget $*] return code $RET, no retry..." >&2
+	fi
+	exit $RET
+done
+
+# 0   No problems occurred.
+# 1   Generic error code.
+# 2   Parse error---for instance, when parsing command-line options, the .wgetrc or .netrc...
+# 3   File I/O error.
+# 4   Network failure.
+# 5   SSL verification failure.
+# 6   Username/password authentication failure.
+# 7   Protocol errors.
+# 8   Server issued an error response.

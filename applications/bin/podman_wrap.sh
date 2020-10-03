@@ -10,11 +10,11 @@ BACKUP_PATH="${SYSTEM_COMMON_BACKUP:-/data/Backup}/containers"
 
 function clean_images() {
 	echo -e "\e[38;5;5mremoving images:\e[0m"
-	"${PODMAN}" images | grep -E '<none>' || [[ $? == 1 ]] | awk '{print $3}' | xargs --no-run-if-empty --verbose --no-run-if-empty "${PODMAN}" rmi
+	"${PODMAN}" images | (grep -E '<none>' || [[ $? == 1 ]]) | awk '{print $3}' | xargs --no-run-if-empty --verbose --no-run-if-empty "${PODMAN}" rmi
 }
 function clear_stopped_container() {
 	echo -e "\e[38;5;5mremoving containers:\e[0m"
-	"${PODMAN}" ps -a | tail -n +2 | grep -v Up || [[ $? == 1 ]] | awk '{print $1}' | xargs --no-run-if-empty --verbose --no-run-if-empty "${PODMAN}" rm
+	"${PODMAN}" ps -a | tail -n +2 | (grep -v Up || [[ $? == 1 ]]) | awk '{print $1}' | xargs --no-run-if-empty --verbose --no-run-if-empty "${PODMAN}" rm
 }
 
 function get_backup_label() {
