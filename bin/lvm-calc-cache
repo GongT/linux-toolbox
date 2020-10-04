@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+function die() {
+	echo -e "\e[38;5;9m$*\e[0m" >&2
+	exit 1
+}
+
+function nospace() {
+	sed 's/[[:space:]]//g'
+}
+
+if [[ $# -gt 3 ]] || [[ $# -lt 2 ]]; then
+	die "Usage: $(basename "$0") <Data LV> <Cache PV> [Use Percent]\e[0m
+    Data LV: lv name (or path) to BE cached
+    Cache PV: which pv to hold the new cache, must in same VG with <Cache PV>
+    Use Percent: optional, use % free space on <Cache PV>, defaults to 100
+"
+fi
+
+declare -r DATA=$1
+declare -r CACHEPV=$2
+declare -ir PERCENT=${3:-100}
+
+if [[ $PERCENT -le 0 ]] || [[ "$PERCENT" -gt 100 ]]; then
+	die "wrong percent value: $PERCENT%"
+fi
+
+echo "Cache PV: $CACHEPV"
+
+function getCacheField() {
+	pvs --noheadings -o "$1" "$CACHEPV" | nospace
+}
+function getDataField() {
+	lvs --noheadings -o "$1" "$DATA" | nospace
+}
+
+VGNAME_DATA=$(getDataField vg_name)
+VGNAME_CACHE=$(getCacheField vg_name)
+
+if [[ "$VGNAME_DATA" != "$VGNAME_CACHE" ]]; then
+	die "data volume is on $VGNAME_DATA, but cache pv is part of $VGNAME_CACHE"
+fi
+declare VGNAME="$VGNAME_DATA"
+echo "Volume Group: $VGNAME"
+unset VGNAME_DATA VGNAME_CACHE
+
+declare -i FREE
+FREE="$(getCacheField pv_pe_count) - $(getCacheField pv_pe_alloc_count)"
+declare -ir TOTAL_FREE="$FREE"
+echo -e "Free space: \t$FREE"
+
+if [[ "$PERCENT" != 100 ]]; then
+	FREE="$TOTAL_FREE * $PERCENT / 100"
+	echo -e "    use: $PERCENT% =\t$FREE"
+fi
+
+function getSpareSize() {
+	{
+		lvs -a --noheadings -o "seg_size_pe" "$VGNAME/lvol0_pmspare" | nospace 2> /dev/null
+	} || echo 0
+}
+declare -ir SPARE_SIZE=$(getSpareSize)
+echo -e " * Spare: $SPARE_SIZE"
+
+declare -i META_SIZE="$FREE / 1001"
+if [[ "$((FREE % 1001))" != 0 ]]; then
+	META_SIZE="$META_SIZE + 1"
+fi
+echo " * Metadata: $META_SIZE"
+
+if [[ $SPARE_SIZE -lt $META_SIZE ]]; then
+	declare -ir META_SIZE_WITH_SPARE="$META_SIZE + ( $META_SIZE - $SPARE_SIZE )"
+else
+	declare -ir META_SIZE_WITH_SPARE=$META_SIZE
+fi
+echo " * Metadata + Spare: $META_SIZE_WITH_SPARE"
+
+if [[ $META_SIZE -le 4 ]] || [[ $META_SIZE_WITH_SPARE -ge $FREE ]]; then
+	die "Insufficent space to create cache"
+fi
+
+declare -i CACHE_SIZE="$FREE - $META_SIZE_WITH_SPARE"
+echo " * Cache: $CACHE_SIZE"
+
+BASE="$(basename "$DATA")"
+CACHE_LV_NAME="${BASE}_cache"
+META_LV_NAME="${BASE}_cache_meta"
+
+function x() {
+	echo "$*"
+	# "$@"
+}
+
+x lvcreate -l "$META_SIZE" --name "$META_LV_NAME" "$VGNAME" "$CACHEPV"
+x lvcreate -l "$CACHE_SIZE" --name "$CACHE_LV_NAME" "$VGNAME" "$CACHEPV"
+x lvconvert --yes --type cache-pool --poolmetadataspare y --cachemode writeback --poolmetadata "$VGNAME/$META_LV_NAME" "$VGNAME/$CACHE_LV_NAME"
+x lvconvert --yes --type cache --cachepool "$VGNAME/$CACHE_LV_NAME" "$DATA"
