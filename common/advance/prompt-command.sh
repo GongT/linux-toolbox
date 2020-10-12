@@ -16,4 +16,5 @@ function _run-prompt-commands() {
 	echo -ne '\007'
 }
 
+export -f _run-prompt-commands
 export PROMPT_COMMAND="_run-prompt-commands"

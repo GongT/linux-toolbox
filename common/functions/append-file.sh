@@ -11,9 +11,6 @@ function append_text_file_section() {
 	local COMMENT_END="${COMMENT} END ${MARKUP}"
 	local SED_PATTERN="/^${COMMENT_START}/,/^${COMMENT_END}$/"
 
-	CONTENT="${CONTENT//'\'/'\\'}"
-	CONTENT="${CONTENT//$'\n'/'\n'}"
-
 	if [[ $(sed -n "${SED_PATTERN}p" "$FILE" | wc -l) -eq 0 ]]; then
 		if is_file_need_newline "$FILE"; then
 			echo "" >> "$FILE"
@@ -22,6 +19,9 @@ function append_text_file_section() {
 ${CONTENT}
 ${COMMENT_END}" >> "$FILE"
 	else
+		CONTENT="${CONTENT//'\'/'\\'}"
+		CONTENT="${CONTENT//$'\n'/'\n'}"
+
 		sed -i -e "${SED_PATTERN}c\\" -e "${COMMENT_START}\n${CONTENT}\n${COMMENT_END}" "$FILE"
 	fi
 }

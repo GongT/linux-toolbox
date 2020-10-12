@@ -1,17 +1,6 @@
 #!/usr/bin/env bash
 
-emit '#!/bin/bash'
-
-emit_stdin <<- "BASH_TEST"
-	case "$0" in
-	*bash*)
-		# is BASH, run it
-		;;
-	*)
-		return # not using BASH
-	esac
-
-BASH_TEST
+emit_file "functions/prefix.sh"
 
 emit_stdin << INTERACTIVE_TEST_A
 case "\$-" in
@@ -23,7 +12,6 @@ case "\$-" in
 	$(< "special/vscode-server.sh")
 	return
 esac
-
 INTERACTIVE_TEST_A
 
 for i in "./special/vscode-wrap/"*; do
@@ -37,12 +25,7 @@ function sample_show_callstack_on_error() {
 }
 "
 
-emit_file "functions/prefix.sh"
-emit "
-if [[ \"\${MY_SCRIPT_ROOT+found}\" != 'found' ]]; then
-	declare -xr MY_SCRIPT_ROOT='${INSTALL_SCRIPT_ROOT}'
-fi
-"
+emit "declare -xr MY_SCRIPT_ROOT='${INSTALL_SCRIPT_ROOT}'"
 emit_file "functions/basic.sh"
 
 emit_file "functions/append-file.sh"
@@ -72,6 +55,7 @@ emit_file "advance/machine-name.sh"
 emit_file "bash-config/path-config.sh"
 
 source "${HERE}/functions/basic.sh"
+source "${HERE}/functions/append-file.sh"
 source "${HERE}/advance/list.sh"
 source "${HERE}/advance/path-var.sh"
 source "${HERE}/functions/command.sh"

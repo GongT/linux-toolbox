@@ -197,17 +197,15 @@ if [[ ${#SUDOLIST[@]} -gt 0 ]]; then
 	emit "fi"
 fi
 
-echo "write bashrc"
-R=${RANDOM}
-grep -v "LINUX_TOOLBOX_INITED" ~/.bashrc > /tmp/${R} 2> /dev/null
-echo "# LINUX_TOOLBOX_INITED" >> /tmp/${R}
-echo '[ -z "${LINUX_TOOLBOX_INITED}" -a "${-#*i}" = "$-" ] && source '"${TARGET}" >> /tmp/${R}
-cat /tmp/${R} > ~/.bashrc
-unlink /tmp/${R}
-### end
+echo ": ssh rc file..."
+if [[ -e ~/.bashrc ]]; then
+	sed -i "/LINUX_TOOLBOX_INITED/d" ~/.bashrc
+fi
+install_script rc
 
 echo -n "complete, try start it - "
 
+# shellcheck source=01-linux-toolbox.sh
 source "${TARGET}" \
 	|| {
 		unlink "${TARGET}"
