@@ -7,7 +7,7 @@ if command_exists podman; then
 		"bin/podman_wrap.sh" \
 		"podman"
 	if command_exists crontab; then
-		cru a "podman-cleanup" "*/5 * * * * /usr/bin/env bash '$HERE/bin/podman_wrap.sh' clean"
+		cru a "podman-cleanup" "*/5 * * * * /usr/bin/env bash '$MY_SCRIPT_ROOT/.bin/podman' clean"
 		cru a "podman-auto-pull" "0 */8 * * * /usr/bin/env bash '$HERE/staff/podman-pull-all.sh'"
 	fi
 else

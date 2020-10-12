@@ -9,8 +9,8 @@ if [[ "$USERNAME" ]]; then
 	declare -rx LCODE_LIBEXEC="/usr/local/libexec/linux-toolbox/vscode-wrap"
 	if [[ "${VSCODE_SERVER_HACK_ROOT+found}" != found ]]; then
 		export VSCODE_SERVER_HACK_ROOT=/data/AppData/VSCodeRemote
-		echo "VSCode Server files save to: $VSCODE_SERVER_HACK_ROOT" >&2
 	fi
+	echo "VSCode Server files save to: $VSCODE_SERVER_HACK_ROOT" >&2
 
 	declare -x TMPDIR="/tmp/vscode-server"
 	mkdir -p "$TMPDIR"
