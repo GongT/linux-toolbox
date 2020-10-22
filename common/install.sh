@@ -2,20 +2,20 @@
 
 emit_file "functions/prefix.sh"
 
-emit_stdin << INTERACTIVE_TEST_A
+emit_stdin <<INTERACTIVE_TEST_A
 case "\$-" in
 *i*)
 	# This shell is interactive
 	;;
 *)
 	# This shell is not interactive
-	$(< "special/vscode-server.sh")
+	$(<"special/vscode-server.sh")
 	return
 esac
 INTERACTIVE_TEST_A
 
 for i in "./special/vscode-wrap/"*; do
-	copy_libexec "$i" "vscode-wrap/$(basename "$i")" > /dev/null
+	copy_libexec "$i" "vscode-wrap/$(basename "$i")" >/dev/null
 done
 
 declare -f die callstack _exit_handle | emit_stdin
@@ -25,7 +25,7 @@ function sample_show_callstack_on_error() {
 }
 "
 
-emit "declare -xr MY_SCRIPT_ROOT='${INSTALL_SCRIPT_ROOT}'"
+emit "declare -xr MY_SCRIPT_ROOT='${MY_SCRIPT_ROOT}'"
 emit_file "functions/basic.sh"
 
 emit_file "functions/append-file.sh"
@@ -52,8 +52,6 @@ emit_file "bash-config/history.sh"
 
 emit_file "advance/machine-name.sh"
 
-emit_file "bash-config/path-config.sh"
-
 source "${HERE}/functions/basic.sh"
 source "${HERE}/functions/append-file.sh"
 source "${HERE}/advance/list.sh"
@@ -61,5 +59,11 @@ source "${HERE}/advance/path-var.sh"
 source "${HERE}/functions/command.sh"
 register_exit_handle
 
-path-var del "$INSTALL_SCRIPT_ROOT/.bin"
+emit_path "bin"
+emit_path ".bin"
+emit 'path-var normalize
+export PATH
+'
+
+path-var del "$MY_SCRIPT_ROOT/.bin"
 path-var del "/usr/local/libexec/linux-toolbox/vscode-wrap"

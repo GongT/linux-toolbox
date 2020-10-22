@@ -21,6 +21,6 @@ if [[ "${SSH_CLIENT+found}" = "found" ]]; then
 	export SSH_CLIENT_IP=$(echo "${SSH_CLIENT}" | awk '{print $1}')
 fi
 
-if [[ ! "${DISPLAY}" ]]; then
+if [[ ! "${DISPLAY:-}" ]]; then
 	export DISPLAY="${SSH_CLIENT_IP}:0"
 fi

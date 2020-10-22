@@ -39,11 +39,11 @@ function pad() {
 cd $(dirname ${BASH_SOURCE}) \
 	|| die "internal error: can't get script folder"
 
-export INSTALL_SCRIPT_ROOT=$(pwd)
+export MY_SCRIPT_ROOT=$(pwd)
 export _INSTALLING_=$(pwd)
-export GEN_BIN_PATH="${INSTALL_SCRIPT_ROOT}/.bin"
+export GEN_BIN_PATH="${MY_SCRIPT_ROOT}/.bin"
 mkdir -p "${GEN_BIN_PATH}"
-echo -e "installing scripts into \e[38;5;14m${INSTALL_SCRIPT_ROOT}\e[0m."
+echo -e "installing scripts into \e[38;5;14m${MY_SCRIPT_ROOT}\e[0m."
 
 if [[ -e /etc/profile.d/linux-toolbox.sh ]]; then
 	rm -f /etc/profile.d/linux-toolbox.sh
@@ -51,28 +51,28 @@ fi
 
 TARGET=/etc/profile.d/01-linux-toolbox.sh
 function emit() {
-	echo "$@" >> "${TARGET}"
+	echo "$@" >>"${TARGET}"
 }
 function emit_stdin() {
-	cat >> "${TARGET}"
+	cat >>"${TARGET}"
 }
 function emit_file() {
-	cat "${_INSTALLING_}/$1" >> "${TARGET}"
+	cat "${_INSTALLING_}/$1" >>"${TARGET}"
 }
 function emit_source() {
 	local CMD=$1
 	shift
 
-	echo -n "source ${VAR_HERE}/$CMD.sh" >> "${TARGET}"
+	echo -n "source ${VAR_HERE}/$CMD.sh" >>"${TARGET}"
 	if [[ $# -eq 0 ]]; then
-		echo -n ' ""' >> "${TARGET}"
+		echo -n ' ""' >>"${TARGET}"
 	else
 		for i in "$@"; do
-			echo -n " '$i'" >> "${TARGET}"
+			echo -n " '$i'" >>"${TARGET}"
 		done
 	fi
 
-	echo "" >> "${TARGET}"
+	echo "" >>"${TARGET}"
 }
 SUDOLIST=()
 function emit_alias_sudo() { # command line ...
@@ -96,7 +96,7 @@ function copy_bin_with_env() {
 		echo "$ENV"
 		echo
 		tail -n +2 "$F"
-	} > "$T"
+	} >"$T"
 	chmod a+x "$T"
 }
 function copy_bin() {
@@ -117,15 +117,12 @@ function copy_libexec() {
 	local TN="${2-$(basename "${F}")}"
 	local T="/usr/local/libexec/linux-toolbox/$TN"
 	mkdir -p "$(dirname "$T")"
-	cat "$F" > "$T"
+	cat "$F" >"$T"
 	chmod a+x "$T"
 	echo "$T"
 }
-function emit_relpath() {
-	emit "path-var add \"${1}\""
-}
 function emit_path() {
-	local PA="${_INSTALLING_}/$1"
+	local PA="${MY_SCRIPT_ROOT}/$1"
 	if [[ ! -e "$PA" ]]; then
 		die "required folder not exists: ${PA}"
 	fi
@@ -134,18 +131,18 @@ function emit_path() {
 
 	local P="\$MY_SCRIPT_ROOT/$1"
 	emit "path-var prepend \"${P}\""
-	path-var prepend "${P}"
+	path-var prepend "${PA}"
 }
 function install_script() {
 	local FOLDER="${1}"
 
 	local PWD=$(pwd)
-	echo -e "$(pad ${_INSTALL_LEVEL_-0})installing \e[38;5;11m.${PWD/"$INSTALL_SCRIPT_ROOT"/}/${FOLDER}/${2-install}.sh\e[0m ..."
+	echo -e "$(pad ${_INSTALL_LEVEL_-0})installing \e[38;5;11m.${PWD/"$MY_SCRIPT_ROOT"/}/${FOLDER}/${2-install}.sh\e[0m ..."
 
-	pushd "${FOLDER}" > /dev/null \
+	pushd "${FOLDER}" >/dev/null \
 		|| die "can't run install script: $(pwd)/${FOLDER}"
 	local _INSTALLING_=$(pwd) HERE=$(pwd)
-	local VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$INSTALL_SCRIPT_ROOT"/}"
+	local VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$MY_SCRIPT_ROOT"/}"
 
 	# echo -e "\e[2mHERE=$HERE\e[0m"
 	# echo -e "\e[2mVAR_HERE=$VAR_HERE\e[0m"
@@ -160,9 +157,9 @@ function install_script() {
 	[[ "${2+found}" = found ]] && echo -n " -> $2"
 	echo -e " - \e[38;5;10mOK!\e[0m"
 
-	popd > /dev/null
+	popd >/dev/null
 	_INSTALLING_=$(pwd) HERE=$(pwd)
-	VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$INSTALL_SCRIPT_ROOT"/}"
+	VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$MY_SCRIPT_ROOT"/}"
 }
 
 ### start
@@ -182,7 +179,7 @@ echo ": bash source..."
 install_script bash_source
 
 echo ": applications..."
-for FILE in "${INSTALL_SCRIPT_ROOT}/applications/"*.sh; do
+for FILE in "${MY_SCRIPT_ROOT}/applications/"*.sh; do
 	install_script applications $(basename "$FILE" .sh)
 done
 

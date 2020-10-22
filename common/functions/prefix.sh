@@ -13,7 +13,7 @@ if [[ "${_INSTALL_LEVEL_+found}" != "found" ]]; then
 	if [[ "${LINUX_TOOLBOX_INITED:-no}" = "yes" ]]; then
 		return
 	else
-		declare -rx LINUX_TOOLBOX_INITED=yes
+		declare -r LINUX_TOOLBOX_INITED=yes
 	fi
 fi
 
