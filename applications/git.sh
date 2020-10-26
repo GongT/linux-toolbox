@@ -15,7 +15,14 @@ git config --system pull.rebase true
 
 CMD=$(
 	cat <<-'LINE'
-		submodule foreach 'git reset --hard ; git clean -ffdx ; git checkout --quiet --progress --force "$(git config --file "$toplevel/.gitmodules" --get "submodule.$name.branch")"'
+		!git submodule foreach --quiet --recursive 'git reset --quiet --hard ; git clean --quiet -ffdx' && git submodule foreach 'git checkout --progress --force "$(git config --file "$toplevel/.gitmodules" --get "submodule.$name.branch")"'
 	LINE
 )
-git config --system alias.checkall "$CMD"
+git config --system alias.scheckout "$CMD"
+
+CMD=$(
+	cat <<-'LINE'
+		!git submodule foreach --quiet --recursive 'git reset --quiet --hard ; git clean --quiet -ffdx' && git submodule foreach 'git checkout --progress --force "$(git config --file "$toplevel/.gitmodules" --get "submodule.$name.branch")" && git pull'
+	LINE
+)
+git config --system alias.spull "$CMD"

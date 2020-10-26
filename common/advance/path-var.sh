@@ -3,16 +3,17 @@
 function path-var() {
 	local ACTION="${1:-}"
 	local OPDIR="${2:-}"
+	local SEP=':'
 
 	case $ACTION in
 	del)
 		list del PATH "${OPDIR}"
-		if [[ "${OPDIR:0:1}" != "/" ]]; then
+		if [[ ${OPDIR:0:1} != "/" ]]; then
 			list del PATH "$(realpath -m "${OPDIR}")"
 		fi
 		;;
 	add)
-		if [[ "${OPDIR:0:1}" != "/" ]]; then
+		if [[ ${OPDIR:0:1} != "/" ]]; then
 			OPDIR=$(realpath -m "${OPDIR}")
 		fi
 		;&
@@ -20,7 +21,7 @@ function path-var() {
 		list add PATH "${OPDIR}"
 		;;
 	prepend)
-		if [[ "${OPDIR:0:1}" != "/" ]]; then
+		if [[ ${OPDIR:0:1} != "/" ]]; then
 			OPDIR=$(realpath -m "${OPDIR}")
 		fi
 		list del PATH "${OPDIR}"
@@ -33,26 +34,18 @@ function path-var() {
 		list dump PATH
 		;;
 	normalize)
-		local P="$PATH"
-		local PO=""
-		local IFS=$'\n'
-		for LINE in $(list dump P); do
-			list add PO "$LINE"
-		done
-		PATH="$PO"
+		list normalize PATH
 		;;
 	*)
-		echo '
-
-$PATH environment edit
-add:    path-var add /some/path
-add:    path-var add ./resolve/to/absolte/path
-add:    path-var add-rel ./always/relative/path
-delete: path-var del /some/path
-has:    path-var has /some/path
-dump:   path-var dump
-
-' >&2
+		cat <<-'HELP' >&2
+			$PATH environment edit
+			add:    path-var add /some/path
+			add:    path-var add ./resolve/to/absolte/path
+			add:    path-var add-rel ./always/relative/path
+			delete: path-var del /some/path
+			has:    path-var has /some/path
+			dump:   path-var dump
+		HELP
 		return 1
 		;;
 	esac
