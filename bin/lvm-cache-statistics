@@ -1,123 +1,98 @@
-#!/bin/bash 
-#
-# lvmcache-statistics.sh displays the LVM cache statistics
-# in a user friendly manner
-#
-# Copyright (C) 2014 Armin Hammer 
-#
-# This program is free software: you can redistribute it and/or modify 
-# it under the terms of the GNU General Public License as published by 
-# the Free Software Foundation, either version 3 of the License, or (at 
-# your option) any later version.
-#
-# This program is distributed in the hope that it will be useful, but 
-# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
-# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License 
-# for more details.
-#
-# You should have received a copy of the GNU General Public License along 
-# with this program. If not, see http://www.gnu.org/licenses/.
-#
-# History:
-# 20141220 hammerar, initial version
-#
-##################################################################
-set -o nounset
+#!/usr/bin/env bash
 
-LVCACHED=${1-"/dev/scsi/game"}
+set -Eeuo pipefail
 
-echo "Reading LVM: $LVCACHED"
-RESULT=$(dmsetup status ${LVCACHED})
-if [ $? -ne 0 ]; then
-  echo "Unsuccessfull readout of <${LVCACHED}>! Abort...!"
-  exit 1
-fi
+getw() { wc -L <<< "$1"; }
 
-# http://stackoverflow.com/questions/10586153/bash-split-string-into-array
-IFS=' ' read -a RESULTS <<< "${RESULT}"
+declare -ia FIELD_SIZE_ARR=()
+function updateSize() {
+	local I
+	for I in $(seq 1 $#); do
+		local V="${!I}"
+		local -i SIZE
+		SIZE="$(getw "$V") + 1"
+		if [[ ${FIELD_SIZE_ARR[$I]:-0} -lt $SIZE ]]; then
+			# echo "UpdateSize: $I -> $SIZE ($V)"
+			FIELD_SIZE_ARR[$I]=$SIZE
+		fi
+	done
+}
 
-##################################################################
-# Reference : https://www.kernel.org/doc/Documentation/
-##################################################################
-#
-# dmsetup status /dev/vg00/lvol1
-# 0 934174720 cache 8 5178/1310720 128 963/1638400 24453 7501 5164 492458 0 8 0 \
-# 1 writeback 2 migration_threshold 2048 mq 10 random_threshold 4 sequential_threshold 512 \
-# discard_promote_adjustment 1 read_promote_adjustment 4 write_promote_adjustment 8
+function padright() {
+	local V="$2"
+	local -i SIZE="$1" VSIZE
+	VSIZE=$(getw "$V")
+	printf "%$((SIZE - VSIZE))s%s" '' "$V"
+}
+function padleft() {
+	local V="$2"
+	local -i SIZE="$1" VSIZE
+	VSIZE=$(getw "$V")
+	local -i NEED_RIGHT="$SIZE - $VSIZE"
+	printf "%s%${NEED_RIGHT}s" "$V" ''
+}
 
-MetadataBlockSize="${RESULTS[3]}"
-NrUsedMetadataBlocks="${RESULTS[4]%%/*}"
-NrTotalMetadataBlocks="${RESULTS[4]##*/}"
+function printLine() {
+	local I
+	for I in $(seq 1 $#); do
+		local align=${COL_ALIGNS[$I]}
+		local V="${!I}"
+		local SIZE=${FIELD_SIZE_ARR[$I]}
+		"pad${align}" "$SIZE" "$V"
+	done
+	echo ''
+}
 
-CacheBlockSize="${RESULTS[5]}"
-NrUsedCacheBlocks="${RESULTS[6]%%/*}"
-NrTotalCacheBlocks="${RESULTS[6]##*/}"
+function percent() {
+	if [[ "$2" -eq 0 ]]; then
+		echo '-'
+	else
+		echo "scale=2;100*($1/$2)" | bc -l
+	fi
+}
 
-NrReadHits="${RESULTS[7]}"
-NrReadMisses="${RESULTS[8]}"
-NrWriteHits="${RESULTS[9]}"
-NrWriteMisses="${RESULTS[10]}"
+FIELDS=lv_name,vg_name,lv_size,metadata_percent,cache_used_blocks,cache_total_blocks,cache_dirty_blocks,cache_read_hits,cache_read_misses,cache_write_hits,cache_write_misses
 
-NrDemotions="${RESULTS[11]}"
-NrPromotions="${RESULTS[12]}"
-NrDirty="${RESULTS[13]}"
+mapfile -t JSONS < <(
+	lvs --noheadings \
+		--units T \
+		--reportformat json \
+		--select 'cache_mode!=""' \
+		-o "$FIELDS" \
+		| jq -r -M -c '.report[0].lv[]'
+)
 
-INDEX=14
-NrFeatureArgs="${RESULTS[${INDEX}]}"
-FeatureArgs=""
+declare -a COL_ALIGNS=('' 'left' 'right' 'right' 'right' 'right' 'left' 'right' 'right')
+declare -a HEADER_LINE=('名称    ' '  容量' '    元数据' '    脏块量' '    缓存利用率' '总缓存  ' '   读取命中率' '   写入命中率')
+declare -a WORKING_LINE=()
+function parseLine() {
+	for var; do
+		# echo "$var"
+		local -r "$var"
+	done
 
-if [ ${NrFeatureArgs} -ne 0 ]; then
+	WORKING_LINE=()
+	WORKING_LINE+=("$vg_name/$lv_name")
+	WORKING_LINE+=(" $lv_size ")
+	WORKING_LINE+=(" $metadata_percent% ")
+	WORKING_LINE+=("  $(percent "$cache_dirty_blocks" "$cache_total_blocks")% ")
+	WORKING_LINE+=(" $(percent "$cache_used_blocks" "$cache_total_blocks")% ")
+	WORKING_LINE+=(" $cache_total_blocks")
+	WORKING_LINE+=("  $(percent "$cache_read_hits" $((cache_read_hits + cache_read_misses)))%")
+	WORKING_LINE+=("$(percent "$cache_write_hits" $((cache_write_hits + cache_write_misses)))%")
+}
 
-  for ITEM in $(seq $((INDEX+1)) $((NrFeatureArgs+INDEX)) ); do
-     FeatureArgs="${FeatureArgs}${RESULTS[${ITEM}]} "
-  done
+updateSize "${HEADER_LINE[@]}"
+for JSON in "${JSONS[@]}"; do
+	# echo $JSON
+	mapfile -t vars < <(echo "$JSON" | jq -r 'to_entries|map("\(.key)=\(.value|tostring)")[]')
+	parseLine "${vars[@]}"
+	updateSize "${WORKING_LINE[@]}"
+done
 
-  INDEX=$((INDEX+NrFeatureArgs))
-fi
-
-INDEX=$((INDEX+1))
-NrCoreArgs="${RESULTS[${INDEX}]}"
-CoreArgs=""
-
-if [ ${NrCoreArgs} -ne 0 ]; then
-
-  for ITEM in $(seq $((INDEX+1)) $((2*NrCoreArgs+INDEX)) ); do
-     CoreArgs="${CoreArgs}${RESULTS[${ITEM}]} "
-  done
-
-  INDEX=$((INDEX+2*NrCoreArgs))
-fi
-
-INDEX=$((INDEX+1))
-PolicyName="${RESULTS[${INDEX}]}"
-INDEX=$((INDEX+1))
-NrPolicyArgs="${RESULTS[${INDEX}]}"
-PolicyArgs=""
-
-if [ ${NrPolicyArgs} -ne 0 ]; then
-
-  for ITEM in $(seq $((INDEX+1)) $((2*NrPolicyArgs+INDEX)) ); do
-     PolicyArgs="${PolicyArgs}${RESULTS[${ITEM}]} "
-  done
-
-  INDEX=$((INDEX+2*NrPolicyArgs))
-fi
-
-##################################################################
-# human friendly output
-##################################################################
-echo "------------------------------------"
-echo "LVM Cache report of ${LVCACHED}"
-echo "------------------------------------"
-
-MetaUsage=$( echo "scale=1;($NrUsedMetadataBlocks * 100) / $NrTotalMetadataBlocks" | bc)
-CacheUsage=$( echo "scale=1;($NrUsedCacheBlocks * 100) / $NrTotalCacheBlocks" | bc)
-echo "- Cache Usage: ${CacheUsage}% - Metadata Usage: ${MetaUsage}%"
-
-ReadRate=$( echo "scale=1;($NrReadHits * 100) / ($NrReadMisses + $NrReadHits)" | bc)
-WriteRate=$( echo "scale=1;($NrWriteHits * 100) / ($NrWriteMisses + $NrWriteHits)" | bc)
-echo "- Read Hit Rate: ${ReadRate}% - Write Hit Rate: ${WriteRate}%"
-echo "- Demotions/Promotions/Dirty: ${NrDemotions}/${NrPromotions}/${NrDirty}"
-echo "- Features in use: ${FeatureArgs}"
-
-#### EOF #########################################################
+printLine "${HEADER_LINE[@]}"
+for JSON in "${JSONS[@]}"; do
+	mapfile -t vars < <(echo "$JSON" | jq -r 'to_entries|map("\(.key)=\(.value|tostring)")[]')
+	parseLine "${vars[@]}"
+	printLine "${WORKING_LINE[@]}"
+done
