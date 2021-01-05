@@ -23,7 +23,7 @@ declare -r DATA=$1
 declare -r CACHEPV=$2
 declare -ir PERCENT=${3:-100}
 
-if [[ $PERCENT -le 0 ]] || [[ "$PERCENT" -gt 100 ]]; then
+if [[ $PERCENT -le 0 ]] || [[ $PERCENT -gt 100 ]]; then
 	die "wrong percent value: $PERCENT%"
 fi
 
@@ -39,7 +39,7 @@ function getDataField() {
 VGNAME_DATA=$(getDataField vg_name)
 VGNAME_CACHE=$(getCacheField vg_name)
 
-if [[ "$VGNAME_DATA" != "$VGNAME_CACHE" ]]; then
+if [[ $VGNAME_DATA != "$VGNAME_CACHE" ]]; then
 	die "data volume is on $VGNAME_DATA, but cache pv is part of $VGNAME_CACHE"
 fi
 declare VGNAME="$VGNAME_DATA"
@@ -51,14 +51,21 @@ FREE="$(getCacheField pv_pe_count) - $(getCacheField pv_pe_alloc_count)"
 declare -ir TOTAL_FREE="$FREE"
 echo -e "Free space: \t$FREE"
 
-if [[ "$PERCENT" != 100 ]]; then
+if [[ $PERCENT != 100 ]]; then
 	FREE="$TOTAL_FREE * $PERCENT / 100"
 	echo -e "    use: $PERCENT% =\t$FREE"
 fi
 
 function getSpareSize() {
+	local PMS PME
 	{
-		lvs -a --noheadings -o "seg_size_pe" "$VGNAME/lvol0_pmspare" | nospace 2> /dev/null
+		PMS=$(lvs -a --noheadings -o "seg_size_pe" "$VGNAME/lvol0_pmspare" | sort | nospace 2>/dev/null)
+		mapfile -t PME < <(echo "$PMS")
+		local -i E V=0
+		for E in "${PME[@]}"; do
+			V=$((V + E))
+		done
+		echo "$V"
 	} || echo 0
 }
 declare -ir SPARE_SIZE=$(getSpareSize)
