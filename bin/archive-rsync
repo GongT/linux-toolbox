@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+if [[ $# -ne 2 ]]; then
+	echo "Usage: $0 <FROM> <TO>" >&2
+	exit 2
+fi
+
+FROM=$1
+TO=$2
+
+set -x
+rsync -axHAX --append-verify --info=progress2 "$FROM" "$TO"

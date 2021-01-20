@@ -11,4 +11,4 @@ do
 	ARGS+=(-u "$i")
 done
 
-journalctl -o cat -n 9000 "${ARGS[@]}"
+journalctl --boot -o cat -n 9000 "${ARGS[@]}"
