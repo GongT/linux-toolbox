@@ -5,5 +5,6 @@
 		"mads-hartmann.bash-ide-vscode",
 		"editorconfig.editorconfig",
 		"aaron-bond.better-comments"
-	]
+	],
+	"unwantedRecommendations": []
 }
