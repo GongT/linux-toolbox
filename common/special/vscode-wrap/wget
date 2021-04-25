@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 
 while true; do
-	/usr/bin/wget "$@"
+	EXARGS=()
+	if [[ $* == *--continue* ]] && { [[ $* != *--continue* ]] || [[ $* != *-C* ]]; }; then
+		EXARGS+=("--continue")
+	fi
+	/usr/bin/wget "${EXARGS[@]}" "$@"
 	RET=$?
-	if [[ "$RET" -eq 3 ]] || [[ "$RET" -eq 4 ]] || [[ "$RET" -eq 5 ]] || [[ "$RET" -eq 7 ]] || [[ "$RET" -eq 8 ]]; then
+	if [[ $RET -eq 3 ]] || [[ $RET -eq 4 ]] || [[ $RET -eq 5 ]] || [[ $RET -eq 7 ]] || [[ $RET -eq 8 ]]; then
 		echo "[error] [wget $*] return code $RET, retry..." >&2
 		sleep 1
 		continue
 	fi
 
-	if [[ "$RET" -ne 0 ]]; then
+	if [[ $RET -ne 0 ]]; then
 		echo "[error] [wget $*] return code $RET, no retry..." >&2
 	fi
 	exit $RET
