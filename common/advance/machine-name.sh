@@ -9,9 +9,9 @@ function set-prompt() {
 		else
 			VAL="$(hostname)"
 		fi
-		envfile-system PROMPT_VALUE "$VAL"
+		envfile-user PROMPT_VALUE "$VAL"
 	else
-		envfile-system PROMPT_VALUE "$VAL"
+		envfile-user PROMPT_VALUE "$VAL"
 	fi
 
 	if [[ "$SHELL" != "/bin/bash" ]]; then
