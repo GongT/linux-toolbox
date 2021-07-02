@@ -1,13 +1,13 @@
-if [[ "$USERNAME" ]]; then
-	# for i in $(seq 0 8); do
-	# 	echo "|" >&2
-	# done
+if [[ "$USERNAME" ]] && is_root; then
+	for i in $(seq 0 8); do
+		echo "|" >&2
+	done
 	echo "Detected VSCode session; USERNAME=$USERNAME; SSH process PID is $$" >&2
 	echo "Bash Options: $- ; Arguments ($#): $*" >&2
 	unset USERNAME
 
 	declare -rx LCODE_LIBEXEC="/usr/local/libexec/linux-toolbox/vscode-wrap"
-	if [[ "${VSCODE_SERVER_HACK_ROOT+found}" != found ]]; then
+	if [[ ${VSCODE_SERVER_HACK_ROOT+found} != found ]]; then
 		export VSCODE_SERVER_HACK_ROOT=/data/AppData/VSCodeRemote
 	fi
 	echo "VSCode Server files save to: $VSCODE_SERVER_HACK_ROOT" >&2
@@ -54,11 +54,11 @@ if [[ "$USERNAME" ]]; then
 	echo "Did not found any running server..." >&2
 	declare -r PIDFILE="/run/vscode-server-prepare-result.pid"
 
-	if [[ -e "$PIDFILE" ]]; then
+	if [[ -e $PIDFILE ]]; then
 		echo "Pid file $PIDFILE exists." >&2
-		if nsenter --target "$(< "$PIDFILE")" --all mountpoint "$HOME/.vscode-server" &> /dev/null; then
+		if nsenter --target "$(<"$PIDFILE")" --all mountpoint "$HOME/.vscode-server" &>/dev/null; then
 			echo "    And valid" >&2
-			replace_bash "$(< "$PIDFILE")"
+			replace_bash "$(<"$PIDFILE")"
 			return
 		else
 			echo "    But invalid" >&2
@@ -75,6 +75,6 @@ if [[ "$USERNAME" ]]; then
 	unshare --mount --propagation slave bash "$LCODE_LIBEXEC/_vscode-server-prepare.sh" "$PIDFILE" &
 	sleep 5
 
-	replace_bash "$(< "$PIDFILE")"
+	replace_bash "$(<"$PIDFILE")"
 	return
 fi
