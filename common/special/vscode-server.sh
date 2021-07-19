@@ -1,4 +1,4 @@
-if [[ "$USERNAME" ]] && is_root; then
+if [[ "$USERNAME" ]] && [[ "$(id -u)" -eq 0 ]]; then
 	for i in $(seq 0 8); do
 		echo "|" >&2
 	done
