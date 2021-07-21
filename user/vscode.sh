@@ -7,7 +7,7 @@ if command -v run-windows &>/dev/null; then
 		export EDITOR='run-cygpath code-insiders.cmd --wait'
 	fi
 elif [[ ${VSCODE_SERVER_HACK_ROOT+found} == found ]] || [[ $PATH =~ "/.vscode-server" ]]; then
-	proxy on
+	proxy on &>/dev/null
 	if command_exists code-insiders; then
 		P=$(find_command code-insiders)
 		if ! [[ -f "$(dirname "$P")/code" ]]; then

@@ -7,7 +7,7 @@ function callstack() {
 	local -i SKIP=${1-1}
 	local -i i
 	for i in $(seq $SKIP $((${#FUNCNAME[@]} - 1))); do
-		if [[ "${BASH_SOURCE[$((i + 1))]+found}" = "found" ]]; then
+		if [[ ${BASH_SOURCE[$((i + 1))]+found} == "found" ]]; then
 			echo "  $i: ${BASH_SOURCE[$((i + 1))]}:${BASH_LINENO[$i]} ${FUNCNAME[$i]}()"
 		else
 			echo "  $i: ${FUNCNAME[$i]}()"
@@ -17,7 +17,7 @@ function callstack() {
 function _exit_handle() {
 	RET=$?
 	echo -ne "\e[0m"
-	if [[ "$RET" -ne 0 ]]; then
+	if [[ $RET -ne 0 ]]; then
 		callstack 1
 	fi
 	exit $RET
@@ -49,7 +49,7 @@ if [[ -e /etc/profile.d/linux-toolbox.sh ]]; then
 	rm -f /etc/profile.d/linux-toolbox.sh
 fi
 
-TARGET=/etc/profile.d/01-linux-toolbox.sh
+declare -r TARGET=/etc/profile.d/01-linux-toolbox.sh
 function emit() {
 	echo "$@" >>"${TARGET}"
 }
@@ -104,7 +104,7 @@ function copy_bin() {
 	local DST="${2-$(basename "$SRC")}"
 	local F="${_INSTALLING_}/$SRC"
 	local T="${GEN_BIN_PATH}/$DST"
-	if [[ -e "$T" ]] && [[ "$(readlink "$T")" = "$F" ]]; then
+	if [[ -e $T ]] && [[ "$(readlink "$T")" == "$F" ]]; then
 		return
 	fi
 	rm -f "$T"
@@ -123,7 +123,7 @@ function copy_libexec() {
 }
 function emit_path() {
 	local PA="${MY_SCRIPT_ROOT}/$1"
-	if [[ ! -e "$PA" ]]; then
+	if [[ ! -e $PA ]]; then
 		die "required folder not exists: ${PA}"
 	fi
 
@@ -154,7 +154,7 @@ function install_script() {
 	_INSTALL_LEVEL_="${_INSTALL_LEVEL_} - 1"
 
 	echo -ne "$(pad ${_INSTALL_LEVEL_})${FOLDER}"
-	[[ "${2+found}" = found ]] && echo -n " -> $2"
+	[[ ${2+found} == found ]] && echo -n " -> $2"
 	echo -e " - \e[38;5;10mOK!\e[0m"
 
 	popd >/dev/null
@@ -208,5 +208,9 @@ source "${TARGET}" \
 		unlink "${TARGET}"
 		die "can't start scripts, install failed."
 	}
+
+if command_exists shfmt; then
+	shfmt -s -ln=bash -bn -w "$TARGET" "$TARGET"
+fi
 
 echo "ok."
