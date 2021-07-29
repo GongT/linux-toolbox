@@ -79,6 +79,3 @@ if [[ "$USERNAME" ]] && [[ "$(id -u)" -eq 0 ]] && ! [[ "${VSCODE_IPC_HOOK_CLI:-}
 	replace_bash "$(<"$PIDFILE")"
 	return
 fi
-
-export USERNAME=''
-unset USERNAME

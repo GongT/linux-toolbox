@@ -6,6 +6,8 @@ emit_stdin <<INTERACTIVE_TEST_A
 case "\$-" in
 *i*)
 	# This shell is interactive
+	export USERNAME=''
+	unset USERNAME
 	;;
 *)
 	# This shell is not interactive
