@@ -1,10 +1,11 @@
-if [[ "$USERNAME" ]] && [[ "$(id -u)" -eq 0 ]]; then
+if [[ "$USERNAME" ]] && [[ "$(id -u)" -eq 0 ]] && ! [[ "${VSCODE_IPC_HOOK_CLI:-}" ]]; then
 	for i in $(seq 0 8); do
 		echo "|" >&2
 	done
+	export USERNAME=''
+	unset USERNAME
 	echo "Detected VSCode session; USERNAME=$USERNAME; SSH process PID is $$" >&2
 	echo "Bash Options: $- ; Arguments ($#): $*" >&2
-	unset USERNAME
 
 	declare -rx LCODE_LIBEXEC="/usr/local/libexec/linux-toolbox/vscode-wrap"
 	if [[ ${VSCODE_SERVER_HACK_ROOT+found} != found ]]; then
@@ -78,3 +79,6 @@ if [[ "$USERNAME" ]] && [[ "$(id -u)" -eq 0 ]]; then
 	replace_bash "$(<"$PIDFILE")"
 	return
 fi
+
+export USERNAME=''
+unset USERNAME
