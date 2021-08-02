@@ -14,8 +14,9 @@ function show_color() {
 	for LINE in "${LINES[@]}"; do
 		NAME=${LINE##* }
 		IP=${LINE%% *}
-
-		IP_TO_NAME[$IP]=$NAME
+		if [[ $NAME ]] && [[ "$IP"  ]]; then
+			IP_TO_NAME[$IP]=$NAME
+		fi
 	done
 
 	OUTPUT=$("$@" | grep -v --fixed-strings '(hidden)')
