@@ -29,14 +29,19 @@ function show_color() {
 			else
 				echo -e "  (\e[38;5;9munknown\e[0m)"
 			fi
+		elif [[ $LINE == *"interface"* ]]; then
+			IFNAME=$(echo "$LINE" | awk '{print $2}' | sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g")
+			IP=$(ip address show dev "$IFNAME" | grep inet | head -n1 | awk '{print $2}')
+			echo "$LINE"
+			echo -e "  \e[1maddress\e[0m: $IP"
 		elif [[ $LINE == *"persistent keepalive"* ]]; then
 			:
 		elif [[ $LINE == *"latest handshake"* ]]; then
 			TIME_PART=$(echo "$LINE" | sed -E 's/\s+/ /g; s/^ | ago$|,//g' | cut -d ' ' -f 3- | sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g")
-			US=$({ systemd-analyze timespan "$TIME_PART" | grep 'μs' | awk '{print $2}'; } || echo 0)
+			US=$({ systemd-analyze timespan "$TIME_PART" 2>/dev/null | grep 'μs' | awk '{print $2}'; } || echo 0)
 			S=$((US / 1000000))
 			if [[ $S -gt 130 ]]; then
-				echo -e "$LINE \e[38;5;11m⚠\e[0m"
+				echo -e "$LINE \e[38;5;11m⚠ \e[0m"
 			else
 				echo -e "$LINE"
 			fi
