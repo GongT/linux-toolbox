@@ -2,9 +2,10 @@
 
 while true; do
 	EXARGS=()
-	if [[ $* == *--continue* ]] && { [[ $* != *--continue* ]] || [[ $* != *-C* ]]; }; then
+	if [[ $* != *--continue* ]] && [[ $* != *--version* ]] && [[ $* != *-C* ]] ; then
 		EXARGS+=("--continue")
 	fi
+	echo " +++ wget ${EXARGS[*]} $* <proxy: ${http_proxy:-unset}>" >&2
 	/usr/bin/wget "${EXARGS[@]}" "$@"
 	RET=$?
 	if [[ $RET -eq 3 ]] || [[ $RET -eq 4 ]] || [[ $RET -eq 5 ]] || [[ $RET -eq 7 ]] || [[ $RET -eq 8 ]]; then

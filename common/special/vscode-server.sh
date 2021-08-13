@@ -38,7 +38,8 @@ if [[ "$USERNAME" ]] && [[ "$(id -u)" -eq 0 ]] && ! [[ "${VSCODE_IPC_HOOK_CLI:-}
 		bash() {
 			echo "[CALL] bash $*" >&2
 			set -x
-			nsenter --target "$TARGET_PID" --mount /usr/bin/bash "$@"
+			tee "$TMPDIR/download-install-script.sh" | \
+				nsenter --target "$TARGET_PID" --mount /usr/bin/bash "$@"
 		}
 		echo "BASH replaced. [target pid $TARGET_PID]" >&2
 	}
