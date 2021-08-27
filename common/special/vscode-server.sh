@@ -11,6 +11,9 @@ if [[ "$USERNAME" ]] && [[ "$(id -u)" -eq 0 ]] && ! [[ "${VSCODE_IPC_HOOK_CLI:-}
 	if [[ ${VSCODE_SERVER_HACK_ROOT+found} != found ]]; then
 		export VSCODE_SERVER_HACK_ROOT=/data/AppData/VSCodeRemote
 	fi
+	if [[ ! $VSCODE_SERVER_HACK_ROOT ]]; then
+		echo "Remount vscode server has disabled" >&2
+	fi
 	echo "VSCode Server files save to: $VSCODE_SERVER_HACK_ROOT" >&2
 
 	declare -x TMPDIR="/tmp/vscode-server"
@@ -38,8 +41,8 @@ if [[ "$USERNAME" ]] && [[ "$(id -u)" -eq 0 ]] && ! [[ "${VSCODE_IPC_HOOK_CLI:-}
 		bash() {
 			echo "[CALL] bash $*" >&2
 			set -x
-			tee "$TMPDIR/download-install-script.sh" | \
-				nsenter --target "$TARGET_PID" --mount /usr/bin/bash "$@"
+			tee "$TMPDIR/download-install-script.sh" \
+				| nsenter --target "$TARGET_PID" --mount /usr/bin/bash "$@"
 		}
 		echo "BASH replaced. [target pid $TARGET_PID]" >&2
 	}
