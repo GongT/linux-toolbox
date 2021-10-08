@@ -1,5 +1,5 @@
 while true; do
-	if [[ "$USERNAME" ]] && [[ "$(id -u)" -eq 0 ]] && ! [[ "${VSCODE_IPC_HOOK_CLI:-}" ]]; then
+	if [[ "$USERNAME" ]] && ! [[ "${VSCODE_IPC_HOOK_CLI:-}" ]]; then
 		for i in $(seq 0 8); do
 			echo "|" >&2
 		done
@@ -7,6 +7,15 @@ while true; do
 		unset USERNAME
 		echo "Detected VSCode session; USERNAME=$USERNAME; SSH process PID is $$" >&2
 		echo "Bash Options: $- ; Arguments ($#): $*" >&2
+
+		if [[ "$PROXY" ]]; then
+			export http_proxy="$PROXY" https_proxy="$PROXY"
+			echo "Using proxy: $PROXY" >&2
+		fi
+
+		if [[ "$(id -u)" -ne 0 ]]; then
+			break
+		fi
 
 		declare -rx LCODE_LIBEXEC="/usr/local/libexec/linux-toolbox/vscode-wrap"
 		if [[ ${VSCODE_SERVER_HACK_ROOT+found} != found ]]; then
@@ -20,11 +29,6 @@ while true; do
 
 		declare -x TMPDIR="/tmp/vscode-server"
 		mkdir -p "$TMPDIR"
-
-		if [[ "$PROXY" ]]; then
-			export http_proxy="$PROXY" https_proxy="$PROXY"
-			echo "Using proxy: $PROXY" >&2
-		fi
 
 		if mountpoint -q "$HOME/.vscode-server"; then
 			echo "Already in namespace: $HOME/.vscode-server is mountpoint" >&2
@@ -85,6 +89,5 @@ while true; do
 		replace_bash "$(<"$PIDFILE")"
 		return
 	fi
-
 	break
 done
