@@ -6,20 +6,41 @@ if command -v run-windows &>/dev/null; then
 		alias code="run-cygpath code-insiders.cmd"
 		export EDITOR='run-cygpath code-insiders.cmd --wait'
 	fi
-elif [[ ${VSCODE_SERVER_HACK_ROOT+found} == found ]] || [[ $PATH =~ "/.vscode-server" ]]; then
+elif [[ $PATH == *"/.vscode-server/"* ]]; then
+	_VSCODEBIN="code"
+	_VSCODEBINPATH=$(path-var dump | grep --fixed-strings '/.vscode-server/')
+elif [[ $PATH == *"/.vscode-server-insiders/"* ]]; then
+	_VSCODEBIN="code-insiders"
+	_VSCODEBINPATH=$(path-var dump | grep --fixed-strings '/.vscode-server-insiders/')
+fi
+
+if [[ ${_VSCODEBIN+found} == found ]] && [[ ${_VSCODEBINPATH+found} == found ]] && ! command_exists "code"; then
 	proxy on &>/dev/null
-	if command_exists code-insiders; then
-		P=$(find_command code-insiders)
-		if ! [[ -f "$(dirname "$P")/code" ]]; then
-			ln -s code-insiders "$(dirname "$P")/code"
-		fi
+
+	OPATH=$PATH
+
+	for i in "$_VSCODEBINPATH/"*; do
+		PATH+=":$i/"
+	done
+
+	if command_exists "$_VSCODEBIN"; then
+		P=$(find_command "$_VSCODEBIN")
+		cat <<-EOF >"$_VSCODEBINPATH/code"
+			#!/usr/bin/env bash
+
+			set -Eeuo pipefail
+
+			exec '$P' "\$@"
+		EOF
+		chmod a+x "$_VSCODEBINPATH/code"
 		unset P
+	else
+		echo "failed find vscode binary" >&2
+		path-var dump
 	fi
 	export EDITOR='code --wait'
-elif [[ "$DISPLAY" ]]; then
-	if command_exists code-insiders; then
-		export EDITOR='code-insiders --wait'
-	elif command_exists code; then
-		export EDITOR='code --wait'
-	fi
+
+	PATH=$OPATH
+	unset OPATH i
 fi
+unset _VSCODEBIN _VSCODEBINPATH
