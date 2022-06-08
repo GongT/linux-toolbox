@@ -1,0 +1,1 @@
+/etc/profile.d/51-linux-toolbox.sh

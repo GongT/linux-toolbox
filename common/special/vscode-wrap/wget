@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 
+LOGF=$(mktemp --tmpdir vscode-server/wget.XXXX.log)
+
 while true; do
 	EXARGS=()
-	if [[ $* != *--continue* ]] && [[ $* != *--version* ]] && [[ $* != *-C* ]] ; then
-		EXARGS+=("--continue")
+	if [[ $* != *--continue* ]] && [[ $* != *--version* ]] && [[ $* != *-C* ]]; then
+		EXARGS+=("--continue" "--show-progress" "--progress=dot")
 	fi
-	echo " +++ wget ${EXARGS[*]} $* <proxy: ${http_proxy:-unset}>" >&2
+	echo " +++ wget ${EXARGS[*]} $* <proxy: ${http_proxy:-unset}>" >>"$LOGF"
 	/usr/bin/wget "${EXARGS[@]}" "$@"
 	RET=$?
 	if [[ $RET -eq 3 ]] || [[ $RET -eq 4 ]] || [[ $RET -eq 5 ]] || [[ $RET -eq 7 ]] || [[ $RET -eq 8 ]]; then
-		echo "[error] [wget $*] return code $RET, retry..." >&2
+		echo "[error] [wget $*] return code $RET, retry..." >>"$LOGF"
 		sleep 1
 		continue
 	fi
 
 	if [[ $RET -ne 0 ]]; then
-		echo "[error] [wget $*] return code $RET, no retry..." >&2
+		echo "[error] [wget $*] return code $RET, no retry..." >>"$LOGF"
 	fi
 	exit $RET
 done

@@ -29,13 +29,13 @@ function environment-file() {
 
 function envfile-system() {
 	if [[ ! $1 ]]; then
-		echo "Usage: (edit /etc/profile.d/00-environment.sh)
+		echo "Usage: (edit /etc/profile.d/50-environment.sh)
 	Set value:    envfile-system SOME_VAR new_value
 	Unset value:  envfile-system SOME_VAR
 " >&2
 		return 1
 	fi
-	environment-file /etc/profile.d/00-environment.sh "$1" "$2"
+	environment-file /etc/profile.d/50-environment.sh "$1" "$2"
 
 	if [[ "$2" ]]; then
 		export "$1=$2"

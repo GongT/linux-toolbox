@@ -4,7 +4,7 @@ function update {
 	bash ${MY_SCRIPT_ROOT}/install_environment.sh
 	echo "really starting..."
 	local -r _INSTALL_LEVEL_=1
-	source /etc/profile.d/01-linux-toolbox.sh
+	source /etc/profile.d/51-linux-toolbox.sh
 	echo "Done."
 }
 

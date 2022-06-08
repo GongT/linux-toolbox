@@ -10,8 +10,8 @@ Will load in new interactive BASH session.
 
 ### Uninstall
 ```bash
-rm -f /etc/profile.d/01-linux-toolbox.sh
-rm -f /etc/profile.d/00-environment.sh
+rm -f /etc/profile.d/51-linux-toolbox.sh
+rm -f /etc/profile.d/50-environment.sh
 rm -f /etc/ssh/ssh_config.d/80-linux-toolbox.conf
 rm -rf /path/to/cloned/repo
 ```
@@ -75,4 +75,3 @@ rm -rf /path/to/cloned/repo
   * `set-window-title`: set terminal window title
   * `set-window-title-callback`: set a command to generate window title *(run before everytime bash print prompt)*
   * `docker clean`: remove stopped containers, delete images without tag
-

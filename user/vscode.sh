@@ -9,9 +9,11 @@ if command -v run-windows &>/dev/null; then
 elif [[ $PATH == *"/.vscode-server/"* ]]; then
 	_VSCODEBIN="code"
 	_VSCODEBINPATH=$(path-var dump | grep --fixed-strings '/.vscode-server/')
+	export EDITOR='code --wait'
 elif [[ $PATH == *"/.vscode-server-insiders/"* ]]; then
 	_VSCODEBIN="code-insiders"
 	_VSCODEBINPATH=$(path-var dump | grep --fixed-strings '/.vscode-server-insiders/')
+	export EDITOR='code-insiders --wait'
 fi
 
 if [[ ${_VSCODEBIN+found} == found ]] && [[ ${_VSCODEBINPATH+found} == found ]] && ! command_exists "code"; then
@@ -38,7 +40,6 @@ if [[ ${_VSCODEBIN+found} == found ]] && [[ ${_VSCODEBINPATH+found} == found ]] 
 		echo "failed find vscode binary" >&2
 		path-var dump
 	fi
-	export EDITOR='code --wait'
 
 	PATH=$OPATH
 	unset OPATH i

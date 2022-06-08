@@ -48,8 +48,14 @@ echo -e "installing scripts into \e[38;5;14m${MY_SCRIPT_ROOT}\e[0m."
 if [[ -e /etc/profile.d/linux-toolbox.sh ]]; then
 	rm -f /etc/profile.d/linux-toolbox.sh
 fi
+if [[ -e /etc/profile.d/01-linux-toolbox.sh ]]; then
+	rm -f /etc/profile.d/01-linux-toolbox.sh
+fi
+if [[ -e /etc/profile.d/00-environment.sh ]]; then
+	mv /etc/profile.d/00-environment.sh /etc/profile.d/50-environment.sh
+fi
 
-declare -r TARGET=/etc/profile.d/01-linux-toolbox.sh
+declare -r TARGET=/etc/profile.d/51-linux-toolbox.sh
 function emit() {
 	echo "$@" >>"${TARGET}"
 }

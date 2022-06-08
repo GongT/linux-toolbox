@@ -13,4 +13,26 @@ if [[ "$USERNAME" ]] && ! [[ "${VSCODE_IPC_HOOK_CLI:-}" ]]; then
 
 	export USERNAME=''
 	unset USERNAME
+
+	O_BASH=$(env sh --noprofile --norc -c "command -v bash")
+	O_PATH="$PATH"
+
+	mkdir -p /tmp/vscode-server
+	cp /usr/local/libexec/linux-toolbox/vscode-wrap/wget /tmp/vscode-server
+	chmod a+x /tmp/vscode-server/wget
+	export PATH="/tmp/vscode-server:$PATH"
+
+	function bash() {
+		local TMPF="/tmp/vscode-server/install-script.sh"
+		if ! [[ -t 0 ]]; then
+			cat >"$TMPF"
+			echo -e "\e[2m + $O_BASH $* < ${TMPF}\e[0m"
+			"$O_BASH" "$@" <"$TMPF"
+		else
+			echo -e "\e[2m + $O_BASH $*\e[0m"
+			"$O_BASH" "$@"
+		fi
+		export PATH="$O_PATH"
+		unset O_BASH O_PATH bash
+	}
 fi
