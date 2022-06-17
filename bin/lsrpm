@@ -1,3 +1,3 @@
 #!/bin/bash
 
-dnf repoquery --installed --all $*
+dnf repoquery --installed --all "$@"

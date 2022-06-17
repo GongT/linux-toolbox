@@ -1,17 +1,4 @@
 #!/bin/bash
 
-show(){
-        ls -l /dev/$2
-}
-
-export(){
-        echo ${2#pts/}
-}
-
-if [ -z "$*" ];then
-        show `ps ax | grep $$`
-else
-        export `ps | grep $$`
-fi
-
-
+PTS=$(ps $$ | tail -n1 | awk '{print $2}')
+ls -l "/dev/$PTS"

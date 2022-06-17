@@ -262,13 +262,13 @@ function finalTableSize() {
 	done
 	local -i LAST_COL="${COLUMNS} - $TOTAL - 2"
 
-	{
-		echo "COLUMNS: $COLUMNS"
-		for I in "${!TABLE_SIZE[@]}"; do
-			echo " - $I: ${TABLE_SIZE[$I]}"
-		done
-		echo "LAST_COL: $LAST_COL"
-	} >&2
+	# {
+	# 	echo "COLUMNS: $COLUMNS"
+	# 	for I in "${!TABLE_SIZE[@]}"; do
+	# 		echo " - $I: ${TABLE_SIZE[$I]}"
+	# 	done
+	# 	echo "LAST_COL: $LAST_COL"
+	# } >&2
 
 	if [[ $LAST_COL -le 13 ]]; then
 		PRINT_TABLE=no
