@@ -1,10 +1,10 @@
 #!/bin/bash
 
-DNF="/usr/bin/dnf"
+DNF="$1"
 
-function _dnf(){
-	echo "${DNF} $@" >&2
-	${DNF} "$@"
+function _dnf() {
+	echo -e "\e[2m$ $SUDO${DNF} $*\e[0m" >&2
+	${SUDO} "${DNF}" "$@"
 }
 
 shift
@@ -13,27 +13,27 @@ function parse_provide_file_arg() {
 	function arg() {
 		echo -ne ${ARG}
 	}
-	if arg | grep -q '/' ; then # has path
+	if arg | grep -q '/'; then # has path
 		ARGS+=("$ARG")
 		return
 	fi
-	if arg | grep -qE '\s' ; then # has any empty - must not a well-known file
+	if arg | grep -qE '\s'; then # has any empty - must not a well-known file
 		ARGS+=("$ARG")
 		return
 	fi
-	if arg | grep -qE '.so$' ; then
+	if arg | grep -qE '.so$'; then
 		echo -e "use [\e[38;5;14m dnf search ${ARG%.so} \e[0m] instead."
 		exit
 	fi
-	if arg | grep -qE '\.so[.\d]+$' ; then
+	if arg | grep -qE '\.so[.\d]+$'; then
 		ARGS+=("/usr/lib64/$ARG")
 		return
 	fi
-	if arg | grep -iqE '\.h$' ; then
+	if arg | grep -iqE '\.h$'; then
 		ARGS+=("/usr/include/*/$ARG")
 		return
 	fi
-	if arg | grep -qE '[^/.]+$' ; then
+	if arg | grep -qE '[^/.]+$'; then
 		ARGS+=("*/bin/$ARG")
 		ARGS+=("*/sbin/$ARG")
 		return
@@ -44,25 +44,25 @@ case $1 in
 i)
 	shift
 	_dnf install -y "$@"
-;;
+	;;
 s)
 	shift
 	if [ $# -eq 0 ]; then
 		_dnf search
 	else
 		S="*"
-		for i in "$@" ; do
+		for i in "$@"; do
 			S+="$i*"
 		done
 		e0=$(echo -ne '\e[0m')
 		e9=$(echo -ne '\e[38;5;9m')
 		e10=$(echo -ne '\e[38;5;10m')
-		DNF="unbuffer /usr/bin/dnf"
-		_dnf list "$S" | grep -v '.i686' \
+		# DNF="unbuffer /usr/bin/dnf"
+		_dnf list --color=always "$S" | grep -v '.i686' \
 			| sed "s#Available Packages#${e9}\0${e0}#g" \
 			| sed "s#Installed Packages#${e10}\0${e0}#g"
 	fi
-;;
+	;;
 p)
 	shift
 	ARGS=()
@@ -70,7 +70,8 @@ p)
 		parse_provide_file_arg
 	done
 	_dnf provides "${ARGS[@]}"
-;;
+	;;
 *)
-	dnf "$@"
+	_dnf "$@"
+	;;
 esac
