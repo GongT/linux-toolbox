@@ -80,8 +80,8 @@ function pps() {
 		echo "no container exists."
 		return
 	fi
-	local RUNNING=$(echo "${OUT}" | grep --color=no ' Up [0-9LA]')
-	local EXITED=$(echo "${OUT}" | grep --color=no -v ' Up [0-9LA]')
+	local RUNNING=$(echo "${OUT}" | grep --color=no $'[[:space:]]Up [0-9LA]')
+	local EXITED=$(echo "${OUT}" | grep --color=no -v $'[[:space:]]Up [0-9LA]')
 	if [[ -n "$RUNNING" ]]; then
 		echo -e "\e[38;5;10mrunning pods:\e[0m"
 		echo "$RUNNING"
