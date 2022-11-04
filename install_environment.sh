@@ -82,12 +82,12 @@ function emit_source() {
 }
 SUDOLIST=()
 function emit_alias_sudo() { # command line ...
-	SUDOLIST+=("alias $1='sudo $@'")
+	SUDOLIST+=("alias $1='sudo --preserve-env $@'")
 }
 function emit_alias_sudo2() { # command line ...
 	local NAME=$1
 	shift
-	SUDOLIST+=("alias $NAME='sudo $@'")
+	SUDOLIST+=("alias $NAME='sudo --preserve-env $@'")
 }
 function copy_bin_with_env() {
 	local ENV="$1"
