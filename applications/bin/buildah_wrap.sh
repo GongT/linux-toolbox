@@ -7,7 +7,7 @@ if ! [ -t 1 ] || ! [ -t 0 ]; then
 fi
 
 _ls_img() {
-	"${BUILDAH}" images --format "table {{.ID}}\t{{.Name}}:{{.Tag}}\t{{.Size}}" "$@"
+	"$BUILDAH" images --format "table {{.ID}}\t{{.Name}}:{{.Tag}}\t{{.Size}}" "$@"
 }
 
 _cache() {
@@ -28,7 +28,7 @@ _cache() {
 
 case $1 in
 clean)
-	"${BUILDAH}" containers -n --format '{{.ContainerID}}' | xargs --no-run-if-empty "${BUILDAH}" rm
+	"$BUILDAH" containers -a -n --format '{{.ContainerID}}' | xargs --no-run-if-empty "$BUILDAH" rm
 	;;
 cache)
 	shift
@@ -39,6 +39,6 @@ img)
 	_ls_img "$@"
 	;;
 *)
-	"${BUILDAH}" "$@"
+	"$BUILDAH" "$@"
 	;;
 esac
