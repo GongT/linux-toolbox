@@ -16,13 +16,13 @@ function environment-file() {
 			if grep -q --fixed-strings -- "$LINE" "$FILE"; then
 				return
 			fi
-			sed -i "/^export ${NAME}=/d" "$FILE"
+			$SUDO sed -i "/^export ${NAME}=/d" "$FILE"
 		fi
-		echo "$LINE" >>"$FILE"
+		echo "$LINE" | $SUDO tee --append "$FILE" >/dev/null
 	elif [[ -e $FILE ]]; then
 		LINE="export $NAME="
 		if grep -q --fixed-strings -- "$LINE" "$FILE"; then
-			sed -i "/^export ${NAME}=/d" "$FILE"
+			$SUDO sed -i "/^export ${NAME}=/d" "$FILE"
 		fi
 	fi
 }
