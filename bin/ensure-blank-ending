@@ -23,8 +23,8 @@ function file_ends_with_newline() {
 	[[ $(tail -c1 "$1" | wc -l) -gt 0 ]]
 }
 
-if [[ -f "$FILE" ]]; then
-	if ! file_ends_with_newline "$FILE"; then
+if [[ -f $FILE ]]; then
+	if ! file_ends_with_newline "$FILE" && [[ "$(<"$FILE")" ]]; then
 		echo >>"$FILE"
 	fi
 else
