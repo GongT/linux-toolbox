@@ -42,6 +42,7 @@ cd $(dirname ${BASH_SOURCE}) \
 export MY_SCRIPT_ROOT=$(pwd)
 export _INSTALLING_=$(pwd)
 export GEN_BIN_PATH="${MY_SCRIPT_ROOT}/.bin"
+export PATH+=":${GEN_BIN_PATH}:${MY_SCRIPT_ROOT}/bin"
 mkdir -p "${GEN_BIN_PATH}"
 echo -e "installing scripts into \e[38;5;14m${MY_SCRIPT_ROOT}\e[0m."
 
@@ -55,7 +56,18 @@ if [[ -e /etc/profile.d/00-environment.sh ]]; then
 	mv /etc/profile.d/00-environment.sh /etc/profile.d/50-environment.sh
 fi
 
-declare -r TARGET=/etc/profile.d/51-linux-toolbox.sh
+if [[ -w /etc/profile.d/51-linux-toolbox.sh ]]; then
+	declare -r TARGET=/etc/profile.d/51-linux-toolbox.sh
+	declare -r LIBEXEC=/usr/local/libexec/linux-toolbox
+	declare -xr SUDO=""
+else
+	declare -r TARGET=$GEN_BIN_PATH/.BASHPROFILE
+	declare -r LIBEXEC="$HOME/.local/lib/linux-toolbox"
+
+	ENTRY_FILE="$HOME/.bashrc"
+	file-section "$ENTRY_FILE" "MY LINUX TOOLBOX" "source '$TARGET'"
+	declare -xr SUDO="sudo"
+fi
 function emit() {
 	echo "$@" >>"${TARGET}"
 }
@@ -121,7 +133,7 @@ function copy_bin() {
 function copy_libexec() {
 	local F="${_INSTALLING_}/$1"
 	local TN="${2-$(basename "${F}")}"
-	local T="/usr/local/libexec/linux-toolbox/$TN"
+	local T="$LIBEXEC/$TN"
 	mkdir -p "$(dirname "$T")"
 	cat "$F" >"$T"
 	chmod a+x "$T"

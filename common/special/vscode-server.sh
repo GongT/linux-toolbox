@@ -18,7 +18,7 @@ if [[ "$USERNAME" ]] && ! [[ "${VSCODE_IPC_HOOK_CLI:-}" ]]; then
 	O_PATH="$PATH"
 
 	mkdir -p /tmp/vscode-server
-	cp /usr/local/libexec/linux-toolbox/vscode-wrap/wget /tmp/vscode-server
+	cp $LIBEXEC/vscode-wrap/wget /tmp/vscode-server
 	chmod a+x /tmp/vscode-server/wget
 	export PATH="/tmp/vscode-server:$PATH"
 

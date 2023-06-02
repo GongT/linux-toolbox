@@ -56,7 +56,11 @@ else
 	if ! [[ "$CURRENT_CONTENT" ]]; then
 		debug "create section"
 		ensure-blank-ending "$FILE"
-		echo "$EXCEPT_CONTENT" >>"$FILE"
+		{
+			echo "$SECTION_START"
+			echo "$EXCEPT_CONTENT"
+			echo "$SECTION_END"
+		} >>"$FILE"
 	elif [[ $EXCEPT_CONTENT != "$CURRENT_CONTENT" ]]; then
 		debug "content replace"
 		BEFORE=$(sed "/$SECTION_START_RE/q" "$FILE")

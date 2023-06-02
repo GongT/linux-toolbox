@@ -68,4 +68,4 @@ export PATH
 '
 
 path-var del "$MY_SCRIPT_ROOT/.bin"
-path-var del "/usr/local/libexec/linux-toolbox/vscode-wrap"
+path-var del "$LIBEXEC/vscode-wrap"
