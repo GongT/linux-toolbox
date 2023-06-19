@@ -2,10 +2,14 @@
 
 write_sshd_config() {
 	local NAME=$1 LINE=$2
-	if "$SUDO" test -e /etc/ssh/ssh_config.d; then
-		echo "$LINE" | $SUDO tee --append "/etc/ssh/sshd_config.d/$NAME" >/dev/null
+	if $SUDO test -d /etc/ssh/ssh_config.d; then
+		local F="/etc/ssh/sshd_config.d/${NAME}.conf"
+		echo "$LINE" | $SUDO tee --append "$F" >/dev/null
+		echo "writting SSHD config file $F" >&2
 	else
+		local F="/etc/ssh/sshd_config"
 		sudo env "PATH=$PATH" file-section /etc/ssh/sshd_config "LINUX_TOOLBOX - sshd - $NAME" "$LINE"
+		echo "writting SSHD config file $F" >&2
 	fi
 }
 

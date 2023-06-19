@@ -6,3 +6,4 @@ systemd/generated
 .temp
 .bin/
 .swp
+local-history/
