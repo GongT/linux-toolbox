@@ -2,19 +2,31 @@
 
 set -Eeuo pipefail
 
+declare -A IP_TO_NAME=()
 if ! [[ -t 1 ]]; then
 	exec "$@"
 fi
 
+function resolve_ip() {
+	local NAME IP=$1
+	NAME=$(host -W1 "$1" | awk '/domain name pointer/ { print $5 }')
+
+	if [[ $NAME ]]; then
+		IP_TO_NAME[$IP]=$NAME
+		return 0
+	else
+		return 1
+	fi
+}
+
 function show_color() {
 	export WG_COLOR_MODE=always
 
-	declare -A IP_TO_NAME=()
 	mapfile -t LINES < <(grep -vE '^\s*#' /etc/hosts | sed -E 's/\s+/ /g' | cut -d' ' -f1-2)
 	for LINE in "${LINES[@]}"; do
 		NAME=${LINE##* }
 		IP=${LINE%% *}
-		if [[ $NAME ]] && [[ "$IP"  ]]; then
+		if [[ $NAME ]] && [[ "$IP" ]]; then
 			IP_TO_NAME[$IP]=$NAME
 		fi
 	done
@@ -24,7 +36,9 @@ function show_color() {
 		if [[ $LINE == *"allowed ips"* ]]; then
 			echo -n "$LINE"
 			IP=$(echo "$LINE" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
-			if [[ ${IP_TO_NAME[$IP]:-} ]]; then
+			if [[ ${IP_TO_NAME[$IP]-} ]]; then
+				echo -e "  (\e[38;5;10m${IP_TO_NAME[$IP]}\e[0m)"
+			elif resolve_ip "$IP"; then
 				echo -e "  (\e[38;5;10m${IP_TO_NAME[$IP]}\e[0m)"
 			else
 				echo -e "  (\e[38;5;9munknown\e[0m)"

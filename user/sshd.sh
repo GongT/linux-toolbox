@@ -7,4 +7,6 @@ if [[ ${SSH_CLIENT+found} == "found" ]]; then
 	if [[ ! ${DISPLAY-} ]]; then
 		export DISPLAY="${SSH_CLIENT_IP}:0"
 	fi
+elif [[ ! ${DISPLAY:-} ]]; then
+	export DISPLAY=":0"
 fi
