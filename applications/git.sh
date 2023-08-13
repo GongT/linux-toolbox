@@ -5,7 +5,7 @@ fi
 emit_file alias/git.sh
 copy_bin bin/git-find-large
 
-if is_root; then
+if is-root; then
 	LOC=--system
 else
 	LOC=--global

@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 
+SYSTEM_PM_INSTALL_SUBCOMMAND="install -y"
+
 if command_exists apt-get; then
 	install_script package-manager apt-get
 elif command_exists dnf; then
 	install_script package-manager dnf
-elif command_exists yum; then
-	install_script package-manager yum
+elif command_exists pacman; then
+	install_script package-manager pacman
 elif command_exists cygpath.exe; then
 	install_script package-manager cygwin
 else
-	die -e "\nonly support apt-get | yum | dnf."
+	die "\nonly support apt-get | pacman | dnf."
 fi
 
 function require_command_in_package() {
@@ -28,9 +30,9 @@ function require_command_in_package() {
 		return 0
 	elif [[ -n "${PACKAGE_NAME}" ]]; then
 		echo "not exists"
-		echo "RUN:   ${SYSTEM_PACKAGE_MANAGER} install -y ${PACKAGE_NAME} ..."
-		${SYSTEM_PACKAGE_MANAGER} install -y "${PACKAGE_NAME}" ||
-			die -e "\e[0mcan't install command: ${COMMAND}"
+		echo "RUN:   ${SYSTEM_PACKAGE_MANAGER} ${SYSTEM_PM_INSTALL_SUBCOMMAND} ${PACKAGE_NAME} ..."
+		${SYSTEM_PACKAGE_MANAGER} ${SYSTEM_PM_INSTALL_SUBCOMMAND} "${PACKAGE_NAME}" ||
+			die "\e[0mcan't install command: ${COMMAND}"
 		require_command_in_package "${COMMAND}"
 	else
 		echo -e "\e[38;5;9mfailed\e[0m"
@@ -40,17 +42,19 @@ function require_command_in_package() {
 
 if grep -q "debian" /etc/os-release 2>/dev/null; then
 	install_script distribute debian
+elif grep -q "Arch Linux" /etc/os-release 2>/dev/null; then
+	install_script distribute arch
 elif [[ -e "/etc/redhat-release" ]]; then
 	install_script distribute rhel
 elif command_exists cygpath.exe; then
 	install_script distribute cygwin
 else
-	die -e "\nonly support debian | rhel-based linux Or cygwin."
+	die "\nonly support debian | rhel-based linux Or cygwin."
 fi
 
 require_command_in_package vim vim
 
-unset require_command_in_package
+unset require_command_in_package SYSTEM_PM_INSTALL_SUBCOMMAND
 
 if [ -e /usr/lib/upstart ]; then
 	install_script init-process upstart
@@ -61,7 +65,7 @@ elif [ -e /usr/sbin/chkconfig ] >/dev/null; then
 elif [ -e /bin/cygpath.exe ]; then
 	echo "skip init helpers on cygwin"
 else
-	die -e "\nonly support upstart | systemd | rhel-sysv."
+	die "\nonly support upstart | systemd | rhel-sysv."
 fi
 
 if grep -q -i 'microsoft' /proc/version; then

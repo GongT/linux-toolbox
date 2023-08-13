@@ -56,7 +56,7 @@ if [[ -e /etc/profile.d/00-environment.sh ]]; then
 	mv /etc/profile.d/00-environment.sh /etc/profile.d/50-environment.sh
 fi
 
-if [[ -w /etc/profile.d/51-linux-toolbox.sh ]]; then
+if touch /etc/profile.d/51-linux-toolbox.sh; then
 	declare -r TARGET=/etc/profile.d/51-linux-toolbox.sh
 	declare -r LIBEXEC=/usr/local/libexec/linux-toolbox
 	declare -xr SUDO=""
