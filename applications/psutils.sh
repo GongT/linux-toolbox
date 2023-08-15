@@ -12,7 +12,7 @@ if command_exists pstree; then
 				--unicode --hide-threads --numeric-sort --show-pids --arguments --long \
 				"${A[@]}" \
 				| fold -w $COLUMNS \
-				| less -K
+				| less -K -X -r
 		}
 	EOF
 	emit "alias pstreeself=\"$(find_command pstree) --unicode --hide-threads --numeric-sort --show-pids --arguments \$\$\""

@@ -3,8 +3,12 @@ if [[ "$USERNAME" ]] && ! [[ "${VSCODE_IPC_HOOK_CLI:-}" ]]; then
 		echo "|" >&2
 	done
 
-	echo "Detected VSCode session; USERNAME=$USERNAME; SSH process PID is $$" >&2
+	echo "Detected VSCode session; USERNAME=$USERNAME; LINUX_TOOLBOX_INITED=$LINUX_TOOLBOX_INITED; SSH process PID is $$" >&2
 	echo "Bash Options: $- ; Arguments ($#): $*" >&2
+
+	if ! [[ "$LINUX_TOOLBOX_INITED" ]]; then
+		source /etc/profile.d/51-linux-toolbox.sh
+	fi
 
 	if [[ "$PROXY" ]]; then
 		export http_proxy="$PROXY" https_proxy="$PROXY"
@@ -18,7 +22,7 @@ if [[ "$USERNAME" ]] && ! [[ "${VSCODE_IPC_HOOK_CLI:-}" ]]; then
 	O_PATH="$PATH"
 
 	mkdir -p /tmp/vscode-server
-	cp $LIBEXEC/vscode-wrap/wget /tmp/vscode-server
+	cp "$MY_LIBEXEC/vscode-wrap/wget" /tmp/vscode-server
 	chmod a+x /tmp/vscode-server/wget
 	export PATH="/tmp/vscode-server:$PATH"
 

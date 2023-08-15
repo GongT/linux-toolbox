@@ -58,11 +58,11 @@ fi
 
 if touch /etc/profile.d/51-linux-toolbox.sh; then
 	declare -r TARGET=/etc/profile.d/51-linux-toolbox.sh
-	declare -r LIBEXEC=/usr/local/libexec/linux-toolbox
+	MY_LIBEXEC=/usr/local/libexec/linux-toolbox
 	declare -xr SUDO=""
 else
 	declare -r TARGET=$GEN_BIN_PATH/.BASHPROFILE
-	declare -r LIBEXEC="$HOME/.local/lib/linux-toolbox"
+	MY_LIBEXEC="$HOME/.local/lib/linux-toolbox"
 
 	ENTRY_FILE="$HOME/.bashrc"
 	file-section "$ENTRY_FILE" "MY LINUX TOOLBOX" "source '$TARGET'"
@@ -133,7 +133,7 @@ function copy_bin() {
 function copy_libexec() {
 	local F="${_INSTALLING_}/$1"
 	local TN="${2-$(basename "${F}")}"
-	local T="$LIBEXEC/$TN"
+	local T="$MY_LIBEXEC/$TN"
 	mkdir -p "$(dirname "$T")"
 	cat "$F" >"$T"
 	chmod a+x "$T"
@@ -183,6 +183,8 @@ function install_script() {
 ### start
 echo "create ${TARGET}"
 [ -e "${TARGET}" ] && rm ${TARGET} || true
+
+emit "MY_LIBEXEC=$MY_LIBEXEC"
 
 echo ": common tools..."
 install_script common
