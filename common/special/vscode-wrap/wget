@@ -1,26 +1,120 @@
 #!/usr/bin/env bash
 
-LOGF=$(mktemp --tmpdir vscode-server/wget.XXXX.log)
+LOGF=$(TMPDIR=/tmp mktemp --dry-run --tmpdir vscode-server/wget.XXXX.log)
+IN_ARG="$*"
+IN_ARGV=("$@")
+WARGS=()
+WGET=/usr/bin/wget
+OUTDIR=/tmp
+if [[ -d /data/AppData/VSCodeRemote/ ]]; then
+	OUTDIR=/data/AppData/VSCodeRemote/downloads
+	mkdir -p "$OUTDIR"
+fi
 
-while true; do
-	EXARGS=()
-	if [[ $* != *--continue* ]] && [[ $* != *--version* ]] && [[ $* != *-C* ]]; then
-		EXARGS+=("--continue" "--show-progress" "--progress=dot")
+die() {
+	loga "$*"
+	exit 1
+}
+
+has_any_arg() {
+	local I
+	for I; do
+		if has_arg "$I"; then
+			return 0
+		fi
+	done
+	return 1
+}
+has_arg() {
+	local J
+	for J in "${IN_ARGV[@]}"; do
+		if [[ $1 == "$J" ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+add_arg_if() {
+	if ! has_any_arg "$@"; then
+		WARGS+=("$1")
 	fi
-	echo " +++ wget ${EXARGS[*]} $* <proxy: ${http_proxy:-unset}>" >>"$LOGF"
-	/usr/bin/wget "${EXARGS[@]}" "$@"
+}
+
+loga() {
+	echo "$*" | tee --append "$LOGF" >&2
+}
+
+run_wget() {
+	local -i RETRY=$1
+
+	loga " +++ wget ${WARGS[*]} <proxy: ${http_proxy:-unset}>"
+	/usr/bin/wget "${WARGS[@]}" >>"$LOGF"
 	RET=$?
-	if [[ $RET -eq 3 ]] || [[ $RET -eq 4 ]] || [[ $RET -eq 5 ]] || [[ $RET -eq 7 ]] || [[ $RET -eq 8 ]]; then
-		echo "[error] [wget $*] return code $RET, retry..." >>"$LOGF"
-		sleep 1
-		continue
-	fi
 
-	if [[ $RET -ne 0 ]]; then
-		echo "[error] [wget $*] return code $RET, no retry..." >>"$LOGF"
+	if [[ $RET -eq 0 ]]; then
+		loga "[success] download complete"
+		return 0
+	elif [[ $RET -eq 3 ]] || [[ $RET -eq 4 ]] || [[ $RET -eq 5 ]] || [[ $RET -eq 7 ]] || [[ $RET -eq 8 ]]; then
+		RETRY=$((RETRY - 1))
+		if [[ $RETRY -eq 0 ]]; then
+			loga "[error] wget return code $RET, all tries failed."
+			return 1
+		else
+			loga "[error] wget return code $RET, retry ($RETRY)..."
+			run_wget $RETRY
+		fi
+	else
+		loga "[error] wget return code $RET, no retry!"
+		return 1
 	fi
-	exit $RET
+}
+
+if has_any_arg --version -V; then
+	exec "$WGET" "$@"
+fi
+
+add_arg_if --continue -C
+add_arg_if --show-progress
+
+while [[ $# -gt 0 ]]; do
+	ARG=$1
+	shift
+
+	case "$ARG" in
+	-O)
+		FNAME=$1
+		if [[ $FNAME == '-' ]]; then
+			shift
+
+			CAT_FILE="$OUTDIR/$RANDOM"
+			WARGS+=("-O" "$CAT_FILE")
+		else
+			shift
+
+			OUTPUT_FILE="$OUTDIR/$(basename "$FNAME")"
+			WARGS+=("-O" "${OUTPUT_FILE}.downloading")
+		fi
+		;;
+	*)
+		WARGS+=("$ARG")
+		;;
+	esac
 done
+
+if ! run_wget 3; then
+	exit 1
+fi
+
+if [[ ${OUTPUT_FILE-} ]]; then
+	mv "${OUTPUT_FILE}.downloading" "${OUTPUT_FILE}"
+	loga "copy result to $FNAME"
+	cp -f "$OUTPUT_FILE" "$FNAME"
+elif [[ ${CAT_FILE-} ]]; then
+	loga "cat output file..."
+	cat "$CAT_FILE"
+	rm -f "$CAT_FILE"
+fi
 
 # 0   No problems occurred.
 # 1   Generic error code.
