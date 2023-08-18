@@ -1,4 +1,4 @@
-if [[ "$USERNAME" ]] && ! [[ "${VSCODE_IPC_HOOK_CLI:-}" ]]; then
+if [[ "$USERNAME" ]] && ! [[ "${VSCODE_IPC_HOOK_CLI-}" ]]; then
 	for i in $(seq 0 8); do
 		echo "|" >&2
 	done
