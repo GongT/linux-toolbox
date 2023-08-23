@@ -5,8 +5,10 @@ if [[ "$USERNAME" ]] && ! [[ "${VSCODE_IPC_HOOK_CLI-}" ]]; then
 
 	echo "Detected VSCode session; USERNAME=$USERNAME; LINUX_TOOLBOX_INITED=$LINUX_TOOLBOX_INITED; SSH process PID is $$" >&2
 	echo "Bash Options: $- ; Arguments ($#): $*" >&2
+	/usr/bin/pstree --ascii --long --show-pids --show-parents --arguments $$ >&2
 
-	if ! [[ "$LINUX_TOOLBOX_INITED" ]]; then
+	if ! [[ "$LINUX_TOOLBOX_INITED" ]] && ! [[ ${http_proxy} ]]; then
+		# to get proxy
 		source /etc/profile.d/51-linux-toolbox.sh
 	fi
 

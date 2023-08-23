@@ -11,8 +11,7 @@ if command_exists pstree; then
 			=PSTREE= \
 				--unicode --hide-threads --numeric-sort --show-pids --arguments --long \
 				"${A[@]}" \
-				| fold -w $COLUMNS \
-				| less -K -X -r
+				| LESSCHARSET=utf-8 less --quit-on-intr --chop-long-lines --ignore-case --RAW-CONTROL-CHARS --clear-screen
 		}
 	EOF
 	emit "alias pstreeself=\"$(find_command pstree) --unicode --hide-threads --numeric-sort --show-pids --arguments \$\$\""

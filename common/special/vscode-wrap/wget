@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-LOGF=$(TMPDIR=/tmp mktemp --dry-run --tmpdir vscode-server/wget.XXXX.log)
+export TMPDIR=/tmp/vscode-server/wget-logs
+mkdir -p "$TMPDIR"
+LOGF=$(mktemp --dry-run)
 IN_ARG="$*"
 IN_ARGV=("$@")
 WARGS=()
@@ -42,7 +44,10 @@ add_arg_if() {
 }
 
 loga() {
-	echo "$*" | tee --append "$LOGF" >&2
+	echo "$*" | logc
+}
+logc() {
+	tee --append "$LOGF" >&2
 }
 
 run_wget() {
@@ -53,26 +58,30 @@ run_wget() {
 	RET=$?
 
 	if [[ $RET -eq 0 ]]; then
+		rm -f "$LOGF"
 		loga "[success] download complete"
 		return 0
 	elif [[ $RET -eq 3 ]] || [[ $RET -eq 4 ]] || [[ $RET -eq 5 ]] || [[ $RET -eq 7 ]] || [[ $RET -eq 8 ]]; then
 		RETRY=$((RETRY - 1))
 		if [[ $RETRY -eq 0 ]]; then
 			loga "[error] wget return code $RET, all tries failed."
-			return 1
+			return $RET
 		else
 			loga "[error] wget return code $RET, retry ($RETRY)..."
 			run_wget $RETRY
 		fi
 	else
 		loga "[error] wget return code $RET, no retry!"
-		return 1
+		return $RET
 	fi
 }
 
-if has_any_arg --version -V; then
+if has_any_arg --version -V -h --help; then
 	exec "$WGET" "$@"
 fi
+
+loga "wget arguments($#): $*"
+/usr/bin/pstree --ascii --long --show-pids --show-parents --arguments $$ | logc
 
 add_arg_if --continue -C
 add_arg_if --show-progress
@@ -89,11 +98,13 @@ while [[ $# -gt 0 ]]; do
 
 			CAT_FILE="$OUTDIR/$RANDOM"
 			WARGS+=("-O" "$CAT_FILE")
+			loga "output: $CAT_FILE"
 		else
 			shift
 
 			OUTPUT_FILE="$OUTDIR/$(basename "$FNAME")"
-			WARGS+=("-O" "${OUTPUT_FILE}.downloading")
+			WARGS+=("-O" "${OUTPUT_FILE}")
+			loga "output: $OUTPUT_FILE"
 		fi
 		;;
 	*)
@@ -107,7 +118,6 @@ if ! run_wget 3; then
 fi
 
 if [[ ${OUTPUT_FILE-} ]]; then
-	mv "${OUTPUT_FILE}.downloading" "${OUTPUT_FILE}"
 	loga "copy result to $FNAME"
 	cp -f "$OUTPUT_FILE" "$FNAME"
 elif [[ ${CAT_FILE-} ]]; then
