@@ -2,7 +2,7 @@
 
 export TMPDIR=/tmp/vscode-server/wget-logs
 mkdir -p "$TMPDIR"
-LOGF=$(mktemp --dry-run)
+LOGF="${TMPDIR}/$(date +'%Y-%m-%d.%H:%M:%S').log"
 IN_ARG="$*"
 IN_ARGV=("$@")
 WARGS=()
@@ -58,7 +58,6 @@ run_wget() {
 	RET=$?
 
 	if [[ $RET -eq 0 ]]; then
-		rm -f "$LOGF"
 		loga "[success] download complete"
 		return 0
 	elif [[ $RET -eq 3 ]] || [[ $RET -eq 4 ]] || [[ $RET -eq 5 ]] || [[ $RET -eq 7 ]] || [[ $RET -eq 8 ]]; then
@@ -80,11 +79,23 @@ if has_any_arg --version -V -h --help; then
 	exec "$WGET" "$@"
 fi
 
-loga "wget arguments($#): $*"
-/usr/bin/pstree --ascii --long --show-pids --show-parents --arguments $$ | logc
+loga "wget arguments($#):"
+for I in "${@}"; do
+	loga "    $I"
+done
+loga "pwd: $(pwd)"
+loga "log: $LOGF"
+
+# /usr/bin/pstree --ascii --long --show-pids --show-parents --arguments $$ | logc
 
 add_arg_if --continue -C
-add_arg_if --show-progress
+
+HELP=$("$WGET" --help 2>&1)
+if [[ "$HELP" == *"--force-progress"* ]]; then
+	add_arg_if --force-progress
+elif [[ "$HELP" == *"--show-progress"* ]]; then
+	add_arg_if --show-progress
+fi
 
 while [[ $# -gt 0 ]]; do
 	ARG=$1

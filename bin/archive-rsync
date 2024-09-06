@@ -11,4 +11,4 @@ FROM=$1
 TO=$2
 
 set -x
-rsync -axHAX --append-verify --info=progress2 "$FROM" "$TO"
+rsync -axHAX --info=progress2 "$FROM" "$TO"
