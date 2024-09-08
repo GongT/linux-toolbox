@@ -1,47 +1,50 @@
-if command -v run-windows &>/dev/null; then
-	if run-windows command_exists code.cmd; then
-		alias code="run-cygpath code.cmd"
-		export EDITOR='run-cygpath code.cmd --wait'
-	elif run-windows command_exists code-insiders.cmd; then
-		alias code="run-cygpath code-insiders.cmd"
-		export EDITOR='run-cygpath code-insiders.cmd --wait'
-	fi
-elif [[ $PATH == *"/.vscode-server/"* ]]; then
-	_VSCODEBIN="code"
-	_VSCODEBINPATH=$(path-var dump | grep --fixed-strings '/.vscode-server/')
-	export EDITOR='code --wait'
-elif [[ $PATH == *"/.vscode-server-insiders/"* ]]; then
-	_VSCODEBIN="code-insiders"
-	_VSCODEBINPATH=$(path-var dump | grep --fixed-strings '/.vscode-server-insiders/')
-	export EDITOR='code-insiders --wait'
-fi
+__check_vscode() {
+	local VSCODE_BIN
+	if command -v run-windows &>/dev/null; then
+		if run-windows command_exists code.cmd; then
+			alias code="run-cygpath code.cmd"
+			export EDITOR='run-cygpath code.cmd --wait'
+		elif run-windows command_exists code-insiders.cmd; then
+			alias code="run-cygpath code-insiders.cmd"
+			export EDITOR='run-cygpath code-insiders.cmd --wait'
+		fi
+		return
+	elif [[ $VSCODE_IPC_HOOK_CLI ]]; then
+		VSCODE_BIN=$(command -v code-insiders || command -v code) 2>/dev/null
 
-if [[ ${_VSCODEBIN+found} == found ]] && [[ ${_VSCODEBINPATH+found} == found ]] && ! command_exists "code"; then
-	proxy on &>/dev/null
+		if ! echo "$VSCODE_BIN" | grep -qiE '[0-9a-f]{40}'; then
+			echo "missing valid vscode executable in PATH" >&2
+			return
+		fi
+	elif [[ $TERM_PROGRAM == 'vscode' ]]; then
+		VSCODE_BIN=$(command -v code-insiders || command -v code) 2>/dev/null
 
-	OPATH=$PATH
-
-	for i in "$_VSCODEBINPATH/"*; do
-		PATH+=":$i/"
-	done
-
-	if command_exists "$_VSCODEBIN"; then
-		P=$(find_command "$_VSCODEBIN")
-		cat <<-EOF >"$_VSCODEBINPATH/code"
-			#!/usr/bin/env bash
-
-			set -Eeuo pipefail
-
-			exec '$P' "\$@"
-		EOF
-		chmod a+x "$_VSCODEBINPATH/code"
-		unset P
+		if ! [[ "$VSCODE_BIN" ]]; then
+			echo "missing vscode command in PATH" >&2
+			return
+		fi
 	else
-		echo "failed find vscode binary" >&2
-		path-var dump
+		return
 	fi
 
-	PATH=$OPATH
-	unset OPATH i
-fi
-unset _VSCODEBIN _VSCODEBINPATH
+	export EDITOR=$(printf "%q --wait" "$VSCODE_BIN")
+
+	if [[ $(basename "$VSCODE_BIN") == 'code-insiders' ]]; then
+		local PARENT=$(dirname "$VSCODE_BIN")
+		local LINK="$PARENT/code"
+
+		if [[ -L $LINK ]]; then
+			if [[ $(readlink "$LINK") == "./code-insiders" ]]; then
+				return
+			else
+				unlink "$LINK"
+			fi
+		elif [[ -e $LINK ]]; then
+			echo "$LINK is not linked to code-insiders" >&2
+			return
+		fi
+
+		ln -s "./code-insiders" "$LINK"
+	fi
+}
+__check_vscode
