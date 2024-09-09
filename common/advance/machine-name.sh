@@ -1,20 +1,21 @@
 function set-prompt() {
-	local SAVE VAL=$1
+	local VAL=$1
 
-	if [[ ! "$VAL" ]]; then
+	if [[ "$VAL" ]]; then
+		envfile-user PROMPT_VALUE "$VAL"
+	else
 		if [[ "${PROMPT_VALUE+found}" ]]; then
 			VAL="$PROMPT_VALUE"
 		elif [[ "${MACHINE_NAME+found}" ]]; then
 			VAL="$MACHINE_NAME"
+			envfile-user PROMPT_VALUE "$VAL"
 		else
 			VAL="$(hostname)"
+			envfile-user PROMPT_VALUE "$VAL"
 		fi
-		envfile-user PROMPT_VALUE "$VAL"
-	else
-		envfile-user PROMPT_VALUE "$VAL"
 	fi
 
-	if [[ "$SHELL" != "/bin/bash" ]]; then
+	if [[ $SHELL != "/bin/bash" ]]; then
 		export PS1="${VAL}${ENDING}"
 	elif is_root; then
 		export PS1="[\[\e[38;5;${CUSTOM_PROMPT_COLOR-9}m\]$VAL\[\e[0m\] \W]# "
@@ -36,12 +37,12 @@ function set-machine-name() {
 }
 function ___calc_REMOTE_PATH() {
 	local M="${MACHINE_NAME-$(hostname)}"
-	if [[ "${REMOTE_PATH+found}" = 'found' ]]; then
+	if [[ ${REMOTE_PATH+found} == 'found' ]]; then
 		REMOTE_PATH+=":$M"
 	else
 		export REMOTE_PATH="$M"
 	fi
-	if [[ ! "${SSH_ORIGIN_MACHINE}" ]]; then
+	if [[ ! ${SSH_ORIGIN_MACHINE} ]]; then
 		export SSH_ORIGIN_MACHINE="$M"
 	fi
 	export _REMOTE_PATH_IN_TITLE=$(echo "$REMOTE_PATH" | sed 's/:/ → /g')

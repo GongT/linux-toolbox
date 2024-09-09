@@ -2,16 +2,24 @@ declare -xr _systemctl=$(find_command systemctl)
 declare -xr _journalctl=$(find_command journalctl)
 
 systemctl() {
-	if [[ $* == *"--user"* ]]; then
+	if [[ $UID -eq 0 ]]; then
+		"$_systemctl" "$@"
+	elif [[ $* == *"--system"* ]]; then
+		$SUDO "$_systemctl" "$@"
+	elif [[ $* == *"--user"* ]]; then
 		"$_systemctl" "$@"
 	else
-		$SUDO "$_systemctl" "$@"
+		"$_systemctl" --user "$@"
 	fi
 }
 journalctl() {
-	if [[ $* == *"--user"* ]]; then
+	if [[ $UID -eq 0 ]]; then
+		"$_journalctl" "$@"
+	elif [[ $* == *"--system"* ]]; then
+		$SUDO "$_journalctl" "$@"
+	elif [[ $* == *"--user"* ]]; then
 		"$_journalctl" "$@"
 	else
-		$SUDO "$_journalctl" "$@"
+		"$_journalctl" --user "$@"
 	fi
 }

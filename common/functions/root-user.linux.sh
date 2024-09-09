@@ -1,4 +1,4 @@
 function is_root() {
-	[[ "$(id -u)" -eq 0 ]]
+	[[ $UID -eq 0 ]]
 }
 export SUDO=$(is_root && echo "" || echo "sudo --preserve-env ")
