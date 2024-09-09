@@ -18,7 +18,6 @@ if [[ "$USERNAME" ]] && ! [[ "${VSCODE_IPC_HOOK_CLI-}" ]]; then
 	fi
 	echo "force vscode install to $VSCODE_AGENT_FOLDER" >&2
 
-
 	export USERNAME=''
 	unset USERNAME
 
@@ -27,7 +26,7 @@ if [[ "$USERNAME" ]] && ! [[ "${VSCODE_IPC_HOOK_CLI-}" ]]; then
 	mkdir -p /tmp/vscode-server
 	cp "$MY_LIBEXEC/vscode-wrap/wget" /tmp/vscode-server
 	chmod a+x /tmp/vscode-server/wget
-	
+
 	function sh() {
 		bash "$@"
 	}
@@ -35,7 +34,7 @@ if [[ "$USERNAME" ]] && ! [[ "${VSCODE_IPC_HOOK_CLI-}" ]]; then
 		local TMPF="/tmp/vscode-server/install-script.sh"
 		if ! [[ -t 0 ]]; then
 			echo -e "\e[2m + $O_BASH $* < ${TMPF}\e[0m" >&2
-			sed --unbuffered "s|^VSCODE_AGENT_FOLDER=.*$|VSCODE_AGENT_FOLDER='$VSCODE_AGENT_FOLDER'|g" | tee "$TMPF" | PATH="/tmp/vscode-server:$PATH" "$O_BASH" "$@"
+			sed --unbuffered "s|^VSCODE_AGENT_FOLDER=.*$|export VSCODE_AGENT_FOLDER='$VSCODE_AGENT_FOLDER'|g" | tee "$TMPF" | PATH="/tmp/vscode-server:$PATH" "$O_BASH" "$@"
 		else
 			echo -e "\e[2m + $O_BASH $*\e[0m" >&2
 			"$O_BASH" "$@"

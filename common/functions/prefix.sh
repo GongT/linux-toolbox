@@ -23,20 +23,19 @@ fi
 
 if [[ $TERM_PROGRAM == "vscode" ]]; then
 	PROMPT_COMMAND="_run-prompt-commands"
-	if [[ "$VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT" ]]; then
+	if ! [[ "$VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT" ]]; then
+		if command -v code-insiders &>/dev/null; then
+			VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT=$(code-insiders --locate-shell-integration-path bash 2>/dev/null)
+		elif command -v code &>/dev/null; then
+			VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT=$(code --locate-shell-integration-path bash 2>/dev/null)
+		fi
+	fi
+
+	if [[ -e $VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT ]]; then
 		# shellcheck source=/dev/null
 		source "$VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT"
+		export VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT
 	else
-		VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT=$(
-			code-insiders --locate-shell-integration-path bash \
-				|| code --locate-shell-integration-path bash
-		) 2>/dev/null
-		if [[ -e $VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT ]]; then
-			# shellcheck source=/dev/null
-			source "$VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT"
-			export VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT
-		else
-			unset VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT
-		fi
+		unset VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT
 	fi
 fi

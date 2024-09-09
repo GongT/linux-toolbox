@@ -12,7 +12,8 @@ Will load in new interactive BASH session.
 ```bash
 rm -f /etc/profile.d/51-linux-toolbox.sh
 rm -f /etc/profile.d/50-environment.sh
-rm -f /etc/ssh/ssh_config.d/80-linux-toolbox.conf
+rm -f /etc/ssh/ssh_config.d/89-linux-toolbox.conf
+rm -f /etc/ssh/sshd_config.d/89-linux-toolbox.conf
 rm -rf /path/to/cloned/repo
 ```
 

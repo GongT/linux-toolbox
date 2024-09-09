@@ -1,3 +1,11 @@
 {
-	"editor.defaultFormatter": null
+	"[jsonc]": {
+		"editor.defaultFormatter": "vscode.json-language-features"
+	},
+	"[shellscript]": {
+		"editor.defaultFormatter": "mads-hartmann.bash-ide-vscode"
+	},
+	"search.exclude": {
+		"51-linux-toolbox.sh": true,
+	}
 }

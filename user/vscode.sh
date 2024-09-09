@@ -1,3 +1,4 @@
+# this file run each bash session
 __check_vscode() {
 	local VSCODE_BIN
 	if command -v run-windows &>/dev/null; then
@@ -10,13 +11,33 @@ __check_vscode() {
 		fi
 		return
 	elif [[ $VSCODE_IPC_HOOK_CLI ]]; then
+		# vscode-remote itegrated terminal
 		VSCODE_BIN=$(command -v code-insiders || command -v code) 2>/dev/null
 
 		if ! echo "$VSCODE_BIN" | grep -qiE '[0-9a-f]{40}'; then
 			echo "missing valid vscode executable in PATH" >&2
 			return
 		fi
+	elif [[ -d $VSCODE_CWD ]]; then
+		# hooked vscode-remote terminal -> ssh -> localhost or another hooked host
+		cd "$VSCODE_CWD"
+		if [[ $SSH_CLIENT != "::1 "* && $SSH_CLIENT != "127.0.0.1 "* ]] || ! [[ -d $VSCODE_AGENT_FOLDER ]]; then
+			return
+		fi
+
+		local CURR_VER
+		CURR_VER=$(jq -r '.[0]' <"$VSCODE_AGENT_FOLDER/cli/servers/lru.json" 2>/dev/null)
+		VSCODE_BIN="$VSCODE_AGENT_FOLDER/cli/servers/$CURR_VER/server/bin/remote-cli"
+
+		if [[ -e "$VSCODE_BIN/code-insiders" ]]; then
+			VSCODE_BIN+="/code-insiders"
+		elif [[ -e "$VSCODE_BIN/code" ]]; then
+			VSCODE_BIN+="/code"
+		else
+			return
+		fi
 	elif [[ $TERM_PROGRAM == 'vscode' ]]; then
+		# locally installed vscode itegrated terminal
 		VSCODE_BIN=$(command -v code-insiders || command -v code) 2>/dev/null
 
 		if ! [[ "$VSCODE_BIN" ]]; then
@@ -44,6 +65,7 @@ __check_vscode() {
 			return
 		fi
 
+		echo "create $LINK link to code-insiders" >&2
 		ln -s "./code-insiders" "$LINK"
 	fi
 }
