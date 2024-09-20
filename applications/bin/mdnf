@@ -1,0 +1,39 @@
+#!/usr/bin/bash
+
+if ! [[ -d $1 ]]; then
+	echo "Usage: mdnf <install-root> ...other dnf commands..." >&2
+	exit 1
+fi
+declare -r INSTALL_ROOT=$(realpath -e "${1}")
+shift
+
+mkdir -p "${SYSTEM_COMMON_CACHE}/dnf/repos" "${SYSTEM_COMMON_CACHE}/dnf/pkgs"
+declare -a VM_ARGS=(
+	"--quiet" "--pty" "--pipe"
+	"--same-dir" "--wait" "--send-sighup" "--collect" "--service-type=oneshot"
+	"--setenv=http_proxy" "--setenv=https_proxy" "--setenv=no_proxy"
+	"--setenv=PATH=/usr/local/bin:/usr/bin:/usr/sbin"
+	"--setenv=INSTALL_ROOT=${INSTALL_ROOT}"
+	"--property=ExecStart=-/usr/bin/mount --bind /proc ${INSTALL_ROOT}/proc"
+	"--property=PrivateDevices=yes"
+	"--property=ProcSubset=pid"
+	"--property=ReadWritePaths=${INSTALL_ROOT}"
+	"--property=BindPaths=${SYSTEM_COMMON_CACHE}/dnf/repos:${INSTALL_ROOT}/var/lib/dnf/repos"
+	"--property=BindPaths=${SYSTEM_COMMON_CACHE}/dnf/pkgs:${INSTALL_ROOT}/var/cache/dnf"
+	"--property=TemporaryFileSystem=${INSTALL_ROOT}/tmp"
+	"--property=TemporaryFileSystem=${INSTALL_ROOT}/run"
+	"--property=TemporaryFileSystem=${INSTALL_ROOT}/var/lib/dnf"
+	"--property=TemporaryFileSystem=${INSTALL_ROOT}/var/log"
+	"--property=TemporaryFileSystem=/var/log"
+)
+
+if [[ $(ls "${INSTALL_ROOT}/etc/yum.repos.d" || true | wc -l &>/dev/null) -eq 0 ]]; then
+	VM_ARGS+=("--property=BindPaths=/etc/yum.repos.d:${INSTALL_ROOT}/etc/yum.repos.d")
+fi
+
+x() {
+	printf '\e[2m + %s\e[0m\n' "$*" >&2
+	"$@"
+}
+
+systemd-run --pty "${VM_ARGS[@]}" /usr/local/libexec/linux-toolbox/mdnf_inner.sh "$@"

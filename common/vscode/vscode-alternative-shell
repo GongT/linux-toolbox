@@ -1,0 +1,64 @@
+#!/usr/bin/bash
+
+set -Eeuo pipefail
+
+log() {
+	echo "$*" >&2
+}
+
+log "starting vscode remote shell"
+source /etc/profile.d/50-environment.sh
+
+if [[ -z "${VSCODE_AGENT_FOLDER}" ]]; then
+	log "no VSCODE_AGENT_FOLDER on this machine"
+	exec /usr/bin/bash "${@}"
+fi
+
+log "force vscode install to $VSCODE_AGENT_FOLDER"
+if [[ -n "${XDG_RUNTIME_DIR-}" ]]; then
+	VSC_TMP="${XDG_RUNTIME_DIR}/vscode-server"
+else
+	VSC_TMP="/run/vscode-server/${UID-$(id -u)}"
+	mkdir --mode 0777 "/run/vscode-server"
+fi
+mkdir -p "${VSC_TMP}"
+
+function __replace_re() {
+	printf "s|^%s=.*$|%s=%q|" "$1" "$1" "${!1}"
+}
+
+
+IGNORE_WGET_CONFIG_FLAG=''
+RE=''
+RE+="$(__replace_re VSCODE_AGENT_FOLDER);"
+RE+="$(__replace_re VSC_TMP);"
+RE+="$(__replace_re IGNORE_WGET_CONFIG_FLAG);"
+
+RAND=${XDG_SESSION_ID-}
+if [[ -z "${XDG_SESSION_ID-}" ]]; then
+	RAND=$RANDOM
+fi
+
+TMPF="$VSC_TMP/install-script.${RAND}.sh"
+log "script dump to $TMPF"
+
+if [[ "${PROXY-}" ]]; then
+	export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} \
+		HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY} \
+		NO_PROXY="10.*,192.*,127.*,172.*"
+fi
+{
+	export -p
+	echo
+	sed --unbuffered -E "$RE"
+} | tee "${TMPF}" | \
+	systemd-run --slice=vscode.slice --send-sighup \
+	"--working-directory=$VSC_TMP" --pipe --wait \
+	--collect --service-type=exec --quiet "--unit=vscode-remote-$RAND.service" \
+	/usr/bin/bash --norc --noprofile
+
+
+
+log "this should not exit"
+exit 123
+

@@ -27,17 +27,33 @@ trap _exit_handle EXIT
 echo "starting installer...."
 
 function die() {
-	echo "" >&2
-	echo -e "\e[38;5;9m$@\e[0m" >&2
-	exit 1
+	if [[ -t 2 ]]; then
+		{
+			tput oc
+			tput rs2
+			printf '\e[s'
+			tput rmcup
+			printf '\e[u'
+			printf "\r\e[K\e[38;5;9m"
+		} >&2
+	fi
+	printf "%s\n" "$*" >&2
+	if [[ -t 2 ]]; then
+		printf "\e[0m" >&2
+	fi
+	if [[ $- == *i* ]]; then
+		return 1
+	else
+		exit 1
+	fi
 }
 function pad() {
 	local i
 	for ((i = 0; i < $1; i++)); do echo -n '  '; done
 }
 
-cd $(dirname ${BASH_SOURCE}) \
-	|| die "internal error: can't get script folder"
+cd $(dirname ${BASH_SOURCE}) ||
+	die "internal error: can't get script folder"
 
 export MY_SCRIPT_ROOT=$(pwd)
 export _INSTALLING_=$(pwd)
@@ -70,6 +86,9 @@ else
 fi
 function emit() {
 	echo "$@" >>"${TARGET}"
+}
+function emitf() {
+	printf "$@" >>"${TARGET}"
 }
 function emit_stdin() {
 	cat >>"${TARGET}"
@@ -141,14 +160,13 @@ function copy_libexec() {
 }
 function emit_path() {
 	local PA="${MY_SCRIPT_ROOT}/$1"
-	if [[ ! -e $PA ]]; then
+	if [[ ! -d $PA ]]; then
 		die "required folder not exists: ${PA}"
 	fi
 
 	chmod a+rx "$PA"
 
-	local P="\$MY_SCRIPT_ROOT/$1"
-	emit "path-var prepend \"${P}\""
+	emitf 'path-var prepend "$MY_SCRIPT_ROOT/"%q\n' "$1"
 	path-var prepend "${PA}"
 }
 function install_script() {
@@ -157,8 +175,8 @@ function install_script() {
 	local PWD=$(pwd)
 	echo -e "$(pad ${_INSTALL_LEVEL_-0})installing \e[38;5;11m.${PWD/"$MY_SCRIPT_ROOT"/}/${FOLDER}/${2-install}.sh\e[0m ..."
 
-	pushd "${FOLDER}" >/dev/null \
-		|| die "can't run install script: $(pwd)/${FOLDER}"
+	pushd "${FOLDER}" >/dev/null ||
+		die "can't run install script: $(pwd)/${FOLDER}"
 	local _INSTALLING_=$(pwd) HERE=$(pwd)
 	local VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$MY_SCRIPT_ROOT"/}"
 
@@ -195,6 +213,11 @@ install_script system
 echo ": quick-alias..."
 install_script quick-alias
 
+echo ": interactive..."
+emit 'if [[ $- == *i* ]]; then'
+install_script interactive
+emit 'fi'
+
 echo ": bash source..."
 install_script bash_source
 
@@ -223,8 +246,8 @@ install_script rc
 echo -n "complete, try start it - "
 
 # shellcheck source=01-linux-toolbox.sh
-source "${TARGET}" \
-	|| {
+source "${TARGET}" ||
+	{
 		unlink "${TARGET}"
 		die "can't start scripts, install failed."
 	}

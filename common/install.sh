@@ -11,14 +11,9 @@ case "\$-" in
 	;;
 *)
 	# This shell is not interactive
-	$(<"special/vscode-server.sh")
 	return
 esac
 INTERACTIVE_TEST_A
-
-for i in "./special/vscode-wrap/"*; do
-	copy_libexec "$i" "vscode-wrap/$(basename "$i")" >/dev/null
-done
 
 declare -f die callstack _exit_handle | emit_stdin
 emit "
@@ -61,11 +56,12 @@ source "${HERE}/advance/path-var.sh"
 source "${HERE}/functions/command.sh"
 register_exit_handle
 
-emit_path "bin"
-emit_path ".bin"
 emit 'path-var normalize
 export PATH
 '
 
+mkdir -p /usr/local/libexec/vscode-wrap
+cp "${HERE}/vscode/vscode-alternative-shell" /usr/local/libexec/vscode-wrap
+
 path-var del "$MY_SCRIPT_ROOT/.bin"
-path-var del "$MY_LIBEXEC/vscode-wrap"
+
