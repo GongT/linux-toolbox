@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+mkdir -p /etc/ssh/sshd_config.d
 write_sshd_config() {
 	local NAME=$1 LINE=$2
 	local F="/etc/ssh/sshd_config.d/${NAME}.conf"

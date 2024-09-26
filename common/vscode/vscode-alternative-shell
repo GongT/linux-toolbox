@@ -6,59 +6,107 @@ log() {
 	echo "$*" >&2
 }
 
-log "starting vscode remote shell"
-source /etc/profile.d/50-environment.sh
 
-if [[ -z "${VSCODE_AGENT_FOLDER}" ]]; then
-	log "no VSCODE_AGENT_FOLDER on this machine"
-	exec /usr/bin/bash "${@}"
-fi
+if [[ -e ${PASS_ENV_FILE:-} ]]; then
+	if [[ -e /etc/profile.d/50-environment.sh ]]; then
+		source /etc/profile.d/50-environment.sh
+	fi
+	source "${PASS_ENV_FILE}"
+	unlink "${PASS_ENV_FILE}"
+	unset PASS_ENV_FILE
 
-log "force vscode install to $VSCODE_AGENT_FOLDER"
-if [[ -n "${XDG_RUNTIME_DIR-}" ]]; then
-	VSC_TMP="${XDG_RUNTIME_DIR}/vscode-server"
+	declare -p TMPF RAND
+
+	function __replace_re() {
+		printf "s|^%s=.*$|%s=%q|" "$1" "$1" "${!1}"
+	}
+
+	IGNORE_WGET_CONFIG_FLAG=''
+	RE=''
+	RE+="$(__replace_re VSCODE_AGENT_FOLDER);"
+	RE+="$(__replace_re VSC_TMP);"
+	RE+="$(__replace_re IGNORE_WGET_CONFIG_FLAG);"
+
+	if [[ "${PROXY-}" ]]; then
+		log "using proxy ${PROXY}"
+		export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} \
+			HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY} \
+			NO_PROXY="10.*,192.*,127.*,172.*"
+	fi
+
+	STATE=start
+	while read -r LINE; do
+		if [[ -z ${LINE}  ]]; then
+			echo '' >> "${TMPF}"
+			continue
+		elif [[ ${LINE} == bash || ${LINE} == sh  ]]; then
+			echo "### skip start shell: ${LINE}" >> "${TMPF}"
+			# echo $$
+			# echo "this will never run"
+			# exit 123
+		elif [[ ${LINE} == *mainScriptWrapper* ]]; then
+			echo "${LINE}" >> "${TMPF}"
+			while read -r LINE ; do
+				STMT=$(echo "${LINE}" | sed --unbuffered -E "$RE")
+				if [[ ${LINE} == *mainScriptWrapper* ]]; then
+					printf "unlink %q\n" "${TMPF}" >> "${TMPF}"
+					echo "${STMT}" >> "${TMPF}"
+					log "CALL BASH TO RUN REPLACED SCRIPT"
+					bash "${TMPF}"
+					log "THIS WILL NEVER RUN"
+					exit 233
+				fi
+				echo "${STMT}" >> "${TMPF}"
+			done
+
+			echo "unepxect close input"
+			exit 123
+		else
+			echo "# + ${LINE}" >> "${TMPF}"
+			eval "${LINE}"
+			# echo "[execue] ${LINE}" >&2
+		fi
+	done
 else
-	VSC_TMP="/run/vscode-server/${UID-$(id -u)}"
-	mkdir --mode 0777 "/run/vscode-server"
+	log "starting vscode remote shell"
+	if [[ -e /etc/profile.d/50-environment.sh ]]; then
+		source /etc/profile.d/50-environment.sh
+	fi
+
+	if [[ -z "${VSCODE_AGENT_FOLDER-}" ]]; then
+		log "no VSCODE_AGENT_FOLDER on this machine"
+		exec /usr/bin/bash "$@"
+	fi
+
+	log "force vscode install to $VSCODE_AGENT_FOLDER"
+	if [[ -n "${XDG_RUNTIME_DIR-}" ]]; then
+		export VSC_TMP="${XDG_RUNTIME_DIR}/vscode-server"
+	else
+		export VSC_TMP="/run/vscode-server/${UID-$(id -u)}"
+		mkdir --mode 0777 "/run/vscode-server"
+	fi
+	mkdir -p "${VSC_TMP}"
+
+
+	RAND=${XDG_SESSION_ID-}
+	if [[ -z "${XDG_SESSION_ID-}" ]]; then
+		RAND=$RANDOM
+	fi
+
+	PASS_ENV_FILE="${VSC_TMP}/env.${RAND}.txt"
+	TMPF="$VSC_TMP/install-script.${RAND}.sh"
+
+	SELF="$(realpath "${BASH_SOURCE[0]}")"
+	export -p > "${PASS_ENV_FILE}"
+	declare -p RAND TMPF >> "${PASS_ENV_FILE}"
+
+	log "SCRIPT DUMP TO $TMPF"
+
+	exec systemd-run --slice=vscode.slice --send-sighup \
+		"--working-directory=$VSC_TMP" --pipe --wait \
+		"--setenv=PASS_ENV_FILE=${PASS_ENV_FILE}" \
+		"--property=ExecStopPost=-/usr/bin/rm -f '${TMPF}'" \
+		--service-type=exec "--unit=vscode-remote-$RAND.service" \
+		"--property=Description=vscremote@$RAND" \
+		/usr/bin/bash --norc --noprofile "$SELF"
 fi
-mkdir -p "${VSC_TMP}"
-
-function __replace_re() {
-	printf "s|^%s=.*$|%s=%q|" "$1" "$1" "${!1}"
-}
-
-
-IGNORE_WGET_CONFIG_FLAG=''
-RE=''
-RE+="$(__replace_re VSCODE_AGENT_FOLDER);"
-RE+="$(__replace_re VSC_TMP);"
-RE+="$(__replace_re IGNORE_WGET_CONFIG_FLAG);"
-
-RAND=${XDG_SESSION_ID-}
-if [[ -z "${XDG_SESSION_ID-}" ]]; then
-	RAND=$RANDOM
-fi
-
-TMPF="$VSC_TMP/install-script.${RAND}.sh"
-log "script dump to $TMPF"
-
-if [[ "${PROXY-}" ]]; then
-	export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} \
-		HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY} \
-		NO_PROXY="10.*,192.*,127.*,172.*"
-fi
-{
-	export -p
-	echo
-	sed --unbuffered -E "$RE"
-} | tee "${TMPF}" | \
-	systemd-run --slice=vscode.slice --send-sighup \
-	"--working-directory=$VSC_TMP" --pipe --wait \
-	--collect --service-type=exec --quiet "--unit=vscode-remote-$RAND.service" \
-	/usr/bin/bash --norc --noprofile
-
-
-
-log "this should not exit"
-exit 123
-

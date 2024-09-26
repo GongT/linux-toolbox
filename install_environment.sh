@@ -144,8 +144,12 @@ function copy_bin() {
 	if [[ -e $T ]] && [[ "$(readlink "$T")" == "$F" ]]; then
 		return
 	fi
+	local DIR=$(dirname "${T}")
+
+	F=$(realpath "--relative-to=${DIR}" "--relative-base=${MY_SCRIPT_ROOT}" "${F}")
+
 	rm -f "$T"
-	# echo ln -s "${F}" "$T"
+	echo ln -s "${F}" "$T"
 	ln -s "${F}" "$T"
 	chmod a+x "$F"
 }
