@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+CURL=/usr/bin/curl
+
+ARGS=("$@")
+if [[ "curl $*" != *' --retry '* ]]; then
+  ARGS=("--retry" "20" "${ARGS[@]}")
+fi
+if [[ "curl $*" != *' --retry-delay '* ]]; then
+  ARGS=("--retry-delay" "1" "${ARGS[@]}")
+fi
+if [[ "curl $*" != *' --max-time '* ]]; then
+  ARGS=("--max-time" "30" "${ARGS[@]}")
+fi
+
+declare -i RET=0
+
+x() {
+	echo "+ $*" >&2
+	"$@"
+	RET=$?
+}
+
+while true; do
+	x "$CURL" "${ARGS[@]}"
+	echo "[curl] exit code: $RET">&2
+	if [[ $RET -eq 35 || $RET -eq 56 ]]; then
+		# 35 - SSL connect error. The SSL handshaking failed.
+		# 56 - Failure with receiving network data.
+		continue
+	fi
+
+	exit $RET
+done
+
+exit 0

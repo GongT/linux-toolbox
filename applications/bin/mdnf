@@ -1,10 +1,14 @@
 #!/usr/bin/bash
 
-if ! [[ -d $1 ]]; then
+if [[ -d ${1} ]]; then
+	declare -r INSTALL_ROOT=$(realpath -e "${1}")
+elif podman container exists "$1" &>/dev/null; then
+	declare -r INSTALL_ROOT=$(podman container mount "$1")
+else
+	echo "invalid/missing install root: $1" >&2
 	echo "Usage: mdnf <install-root> ...other dnf commands..." >&2
 	exit 1
 fi
-declare -r INSTALL_ROOT=$(realpath -e "${1}")
 shift
 
 mkdir -p "${SYSTEM_COMMON_CACHE}/dnf/repos" "${SYSTEM_COMMON_CACHE}/dnf/pkgs"
@@ -27,7 +31,7 @@ declare -a VM_ARGS=(
 	"--property=TemporaryFileSystem=/var/log"
 )
 
-if [[ $(ls "${INSTALL_ROOT}/etc/yum.repos.d" || true | wc -l &>/dev/null) -eq 0 ]]; then
+if [[ "$(ls "${INSTALL_ROOT}/etc/yum.repos.d" 2>/dev/null | wc -l 2>/dev/null)" -eq 0 ]]; then
 	VM_ARGS+=("--property=BindPaths=/etc/yum.repos.d:${INSTALL_ROOT}/etc/yum.repos.d")
 fi
 
