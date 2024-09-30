@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if command_exists podman; then
-	PODMAN=$(find_command podman)
+PODMAN=$(find_command podman)
+if [[ -n "${PODMAN}" ]]; then
 	copy_bin_with_env \
 		"PODMAN='$PODMAN'" \
 		"bin/podman_wrap.sh" \

@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-PODMAN='/usr/bin/podman'
-
 set -Eeuo pipefail
 
 if ! [ -t 1 ] || ! [ -t 0 ]; then

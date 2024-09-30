@@ -1,8 +1,8 @@
 function find_command() {
-	env bash --noprofile --norc -c "command -v \"$@\"" -- "$1"
+	PATH="/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/bin:/usr/local/sbin" command -v "$@" 2>/dev/null
 }
 function command_exists() {
-	find_command "$1" &> /dev/null
+	find_command "$1" &>/dev/null
 }
 
 function _find_command() {
