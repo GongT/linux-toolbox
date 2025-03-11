@@ -18,20 +18,20 @@ if [[ -e ${PASS_ENV_FILE:-} ]]; then
 	declare -p TMPF RAND
 
 	function __replace_re() {
-		printf "s|^%s=.*$|%s=%q|" "$1" "$1" "${!1}"
+		printf "s|^%s=.*$|%s=\"%s\"|" "$1" "$1" "${!1}"
 	}
 
-	IGNORE_WGET_CONFIG_FLAG=''
+	IGNORE_WGET_CONFIG_FLAG='--read-timeout=10 --continue --output-file=${COMMIT_ID}.wget.log'
 	RE=''
 	RE+="$(__replace_re VSCODE_AGENT_FOLDER);"
 	RE+="$(__replace_re VSC_TMP);"
 	RE+="$(__replace_re IGNORE_WGET_CONFIG_FLAG);"
 
 	if [[ "${PROXY-}" ]]; then
-		log "using proxy ${PROXY}"
-		export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} \
-			HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY} \
-			NO_PROXY="10.*,192.*,127.*,172.*"
+		log "[not] using proxy ${PROXY}"
+		#export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} \
+		#	HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY} \
+		#	NO_PROXY="10.*,192.*,127.*,172.*"
 	fi
 
 	STATE=start
@@ -49,12 +49,12 @@ if [[ -e ${PASS_ENV_FILE:-} ]]; then
 			while read -r LINE ; do
 				STMT=$(echo "${LINE}" | sed --unbuffered -E "$RE")
 				if [[ ${LINE} == *mainScriptWrapper* ]]; then
-					printf "unlink %q\n" "${TMPF}" >> "${TMPF}"
 					echo "${STMT}" >> "${TMPF}"
 					log "CALL BASH TO RUN REPLACED SCRIPT"
 					bash "${TMPF}"
-					log "THIS WILL NEVER RUN"
-					exit 233
+					RET=$?
+					log "[one time script mode] script finished, code ${RET}."
+					exit "${RET}"
 				fi
 				echo "${STMT}" >> "${TMPF}"
 			done
@@ -102,10 +102,12 @@ else
 
 	log "SCRIPT DUMP TO $TMPF"
 
+#		"--property=ExecStopPost=-/usr/bin/rm -f '${TMPF}'" \
+	touch /tmp/vscode-skip-server-requirements-check
+
 	exec systemd-run --slice=vscode.slice --send-sighup \
 		"--working-directory=$VSC_TMP" --pipe --wait \
 		"--setenv=PASS_ENV_FILE=${PASS_ENV_FILE}" \
-		"--property=ExecStopPost=-/usr/bin/rm -f '${TMPF}'" \
 		--service-type=exec "--unit=vscode-remote-$RAND.service" \
 		"--property=Description=vscremote@$RAND" \
 		/usr/bin/bash --norc --noprofile "$SELF"

@@ -56,12 +56,15 @@ source "${HERE}/advance/path-var.sh"
 source "${HERE}/functions/command.sh"
 register_exit_handle
 
+if [[ $(systemd-detect-virt) == 'wsl' ]]; then
+	emit_file "advance/path.wsl.sh"
+fi
 emit 'path-var normalize
 export PATH
 '
+
 
 mkdir -p /usr/local/libexec/vscode-wrap
 cp "${HERE}/vscode/vscode-alternative-shell" /usr/local/libexec/vscode-wrap
 
 path-var del "$MY_SCRIPT_ROOT/.bin"
-

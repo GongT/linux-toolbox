@@ -3,7 +3,11 @@
 if [[ -d ${1} ]]; then
 	declare -r INSTALL_ROOT=$(realpath -e "${1}")
 elif podman container exists "$1" &>/dev/null; then
-	declare -r INSTALL_ROOT=$(podman container mount "$1")
+	if is-root; then
+		declare -r INSTALL_ROOT=$(podman container mount "$1")
+	else
+		declare -r INSTALL_ROOT=$(podman unshare podman container mount "$1")
+	fi
 else
 	echo "invalid/missing install root: $1" >&2
 	echo "Usage: mdnf <install-root> ...other dnf commands..." >&2
@@ -15,7 +19,7 @@ mkdir -p "${SYSTEM_COMMON_CACHE}/dnf/repos" "${SYSTEM_COMMON_CACHE}/dnf/pkgs"
 declare -a VM_ARGS=(
 	"--quiet" "--pty" "--pipe"
 	"--same-dir" "--wait" "--send-sighup" "--collect" "--service-type=oneshot"
-	"--setenv=http_proxy" "--setenv=https_proxy" "--setenv=no_proxy"
+	"--setenv=http_proxy=${http_proxy}" "--setenv=https_proxy=${https_proxy}" "--setenv=no_proxy=${no_proxy}"
 	"--setenv=PATH=/usr/local/bin:/usr/bin:/usr/sbin"
 	"--setenv=INSTALL_ROOT=${INSTALL_ROOT}"
 	"--property=ExecStart=-/usr/bin/mount --bind /proc ${INSTALL_ROOT}/proc"
@@ -40,4 +44,10 @@ x() {
 	"$@"
 }
 
-systemd-run --pty "${VM_ARGS[@]}" /usr/local/libexec/linux-toolbox/mdnf_inner.sh "$@"
+if is-root; then
+	VM_ARGS+=(--system)
+else
+	VM_ARGS+=(--user)
+fi
+
+x systemd-run --pty "${VM_ARGS[@]}" /usr/local/libexec/linux-toolbox/mdnf_inner.sh "$@"
