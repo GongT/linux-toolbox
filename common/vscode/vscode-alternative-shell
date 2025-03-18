@@ -28,10 +28,10 @@ if [[ -e ${PASS_ENV_FILE:-} ]]; then
 	RE+="$(__replace_re IGNORE_WGET_CONFIG_FLAG);"
 
 	if [[ "${PROXY-}" ]]; then
-		log "[not] using proxy ${PROXY}"
-		#export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} \
-		#	HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY} \
-		#	NO_PROXY="10.*,192.*,127.*,172.*"
+		log "using proxy ${PROXY}"
+		export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} \
+			HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY} \
+			NO_PROXY="10.*,192.*,127.*,172.*"
 	fi
 
 	STATE=start
