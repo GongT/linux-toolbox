@@ -105,7 +105,15 @@ else
 #		"--property=ExecStopPost=-/usr/bin/rm -f '${TMPF}'" \
 	touch /tmp/vscode-skip-server-requirements-check
 
-	exec systemd-run --slice=vscode.slice --send-sighup \
+	if [[ $(id -u ) -eq 0 ]]; then
+		log "running as root, using systemd-run"
+		MAYBEUSER=()
+	else
+		log "running as user, using systemd-run --user"
+		MAYBEUSER=(--user)
+	fi
+
+	exec systemd-run "${MAYBEUSER[@]}" --slice=vscode.slice --send-sighup \
 		"--working-directory=$VSC_TMP" --pipe --wait \
 		"--setenv=PASS_ENV_FILE=${PASS_ENV_FILE}" \
 		--service-type=exec "--unit=vscode-remote-$RAND.service" \
