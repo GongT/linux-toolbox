@@ -28,7 +28,7 @@ _cache() {
 
 case $1 in
 clean)
-	"$BUILDAH" containers -a -n --format '{{.ContainerID}}' | xargs --no-run-if-empty "$BUILDAH" rm
+	"$BUILDAH" prune --all
 	;;
 cache)
 	shift
