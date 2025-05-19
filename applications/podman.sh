@@ -7,16 +7,11 @@ if command_exists podman; then
 		"PODMAN='$PODMAN'" \
 		"bin/podman_wrap.sh" \
 		"podman"
-	if command_exists crontab; then
-		cru a "podman-cleanup" "0 * * * * /usr/bin/env bash '$HERE/bin/podman_wrap.sh' clean" "每小时清空无用容器、镜像"
-		cru a "podman-auto-pull" "0 */8 * * * /usr/bin/env bash '$HERE/staff/podman-pull-all.sh'" "每8小时从dockerhub更新镜像"
-	fi
 else
 	echo "podman not found"
-	if command_exists crontab; then
-		cru d "podman-cleanup" "podman-auto-pull"
-	fi
 fi
+
+cru d "podman-cleanup" "podman-auto-pull"
 
 if command_exists buildah; then
 	echo "podman buildah"
