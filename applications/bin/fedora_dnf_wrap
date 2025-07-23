@@ -58,7 +58,7 @@ s)
 		e9=$(echo -ne '\e[38;5;9m')
 		e10=$(echo -ne '\e[38;5;10m')
 		# DNF="unbuffer /usr/bin/dnf"
-		_dnf list --color=always "$S" | grep -v '.i686' \
+		_dnf list "$S" | grep -v '.i686' \
 			| sed "s#Available Packages#${e9}\0${e0}#g" \
 			| sed "s#Installed Packages#${e10}\0${e0}#g"
 	fi
