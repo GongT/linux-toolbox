@@ -8,7 +8,11 @@ IN_ARGV=("$@")
 WARGS=()
 WGET=/usr/bin/wget
 OUTDIR=/tmp
-if [[ -d /data/AppData/VSCodeRemote/ ]]; then
+if [[  -z ${APP_DATA_PATH:-} ]]; then
+	export APP_DATA_PATH='/data/AppData'
+fi
+
+if [[ -d "${APP_DATA_PATH}/VSCodeRemote/" ]]; then
 	OUTDIR=/data/AppData/VSCodeRemote/downloads
 	mkdir -p "$OUTDIR"
 fi

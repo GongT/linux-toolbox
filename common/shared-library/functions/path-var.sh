@@ -34,17 +34,19 @@ function path-var() {
 		list dump PATH
 		;;
 	normalize)
-		list normalize PATH
+		list dedup PATH
 		;;
 	*)
 		cat <<-'HELP' >&2
 			$PATH environment edit
-			add:    path-var add /some/path
-			add:    path-var add ./resolve/to/absolte/path
-			add:    path-var add-rel ./always/relative/path
-			delete: path-var del /some/path
-			has:    path-var has /some/path
-			dump:   path-var dump
+			add:         path-var add /some/path
+			prepend:     path-var prepend
+			add:         path-var add ./resolve/to/absolte/path
+			add:         path-var add-rel ./always/relative/path
+			delete:      path-var del /some/path
+			has:         path-var has /some/path
+			normalize:   path-var normalize
+			dump:        path-var dump
 		HELP
 		return 1
 		;;

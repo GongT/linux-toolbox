@@ -64,8 +64,8 @@ function list() {
 	size)
 		_list_split | wc -l
 		;;
-	normalize)
-		# echo "NORMALIZE< $TARGET_VAR = ${!TARGET_VAR}">&2
+	dedup)
+		# echo "DEDUP< $TARGET_VAR = ${!TARGET_VAR}">&2
 		local PVAL="$TARGET_VAR_VALUE"
 		local NVAL=""
 		local IFS=$'\n'
@@ -73,7 +73,7 @@ function list() {
 			list add NVAL "$LINE"
 		done
 		eval "$TARGET_VAR='${NVAL}'"
-		# echo "NORMALIZE> $TARGET_VAR = ${!TARGET_VAR}">&2
+		# echo "DEDUP> $TARGET_VAR = ${!TARGET_VAR}">&2
 		;;
 	*)
 		echo "
@@ -86,8 +86,9 @@ bash string list edit tool:
 	get size: list size       SOME_VAR
 	has:      list has        SOME_VAR value
 	dump:     list dump       SOME_VAR
+	dedup:    list dedup      SOME_VAR
 environment:
-	SEP:   delimiter, defaluts to :
+	SEP:   delimiter, defaults to ':'
 " >&2
 		RET=1
 		;;
