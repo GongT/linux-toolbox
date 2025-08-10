@@ -10,12 +10,6 @@ install_script shared-library
 
 emit_file "functions/terminal.sh"
 
-if [[ -e "/bin/cygpath.exe" ]]; then
-	emit_file "functions/root-user.cygwin.sh"
-else
-	emit_file "functions/root-user.linux.sh"
-fi
-
 emit_file "advance/environment-file.sh"
 emit_file "advance/keyvalue-file.sh"
 emit_file "advance/prompt-command.sh"

@@ -4,8 +4,6 @@ shopt -s inherit_errexit extglob nullglob globstar lastpipe shift_verbose
 
 source "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/common/shared-library/include.sh"
 
-echo "starting installer...."
-
 function pad() {
 	local i
 	for ((i = 0; i < $1; i++)); do echo -n '  '; done
@@ -27,20 +25,30 @@ if [[ -e /etc/profile.d/00-environment.sh ]]; then
 	mv /etc/profile.d/00-environment.sh /etc/profile.d/50-environment.sh
 fi
 
-if touch /etc/profile.d/51-linux-toolbox.sh; then
+if is_root; then
+	declare -xr SUDO=""
+else
+	declare -xr SUDO="sudo"
+fi
+
+if [[ " $* " != *' --user '* ]] && is_root; then
 	declare -r TARGET=/etc/profile.d/51-linux-toolbox.sh
 	MY_LIBEXEC=/usr/local/libexec/linux-toolbox
-	declare -xr SUDO=""
+	declare -xr INSTALL_TYPE='system'
+	echo -e "\e[38;5;9m 🐧🐧🐧🐧 linux-toolbox @ ${INSTALL_TYPE}\e[0m"
 else
 	MY_LIBEXEC="$HOME/.local/lib/linux-toolbox"
 	declare -r TARGET="${MY_LIBEXEC}/.BASHPROFILE"
 
 	ENTRY_FILE="$HOME/.bashrc"
 	file-section "$ENTRY_FILE" "MY LINUX TOOLBOX" "source '$TARGET'"
-	declare -xr SUDO="sudo"
+	declare -xr INSTALL_TYPE='user'
+	echo -e "\e[38;5;10m 🐧🐧🐧🐧 linux-toolbox @ ${INSTALL_TYPE}\e[0m"
 fi
 
-echo -e "installing scripts into \e[38;5;14m${MY_LIBEXEC}\e[0m."
+echo -e " * installing scripts into \e[38;5;14m${MY_LIBEXEC}\e[0m"
+echo -e " * entrypoint is \e[38;5;14m${TARGET}\e[0m"
+echo ""
 
 export GEN_BIN_PATH="${MY_LIBEXEC}/bin"
 export PATH+=":${GEN_BIN_PATH}"
@@ -200,7 +208,6 @@ function install_script() {
 }
 
 ### start
-echo "create ${TARGET}"
 [ -e "${TARGET}" ] && rm ${TARGET} || true
 
 _debug_show_section() {
@@ -233,6 +240,7 @@ _debug_show_section "user apps..."
 install_script user
 
 emit "if ! is_root ; then"
+__INDENT=$'\t'
 if [[ ${#SUDOLIST[@]} -gt 0 ]]; then
 	for L in "${SUDOLIST[@]}"; do
 		emit "	$L"
@@ -248,6 +256,7 @@ if [[ ${#NOT_SUDOLIST[@]} -gt 0 ]]; then
 else
 	emit "	:"
 fi
+__INDENT=''
 emit "fi"
 
 _debug_show_section "ssh rc file..."
@@ -263,7 +272,6 @@ if command_exists shfmt; then
 	echo "reformat it with shfmt..."
 	shfmt -s -ln=bash -bn -w "$TARGET" "$TARGET"
 fi
-
 
 echo -n "complete, try start it - "
 # shellcheck source=01-linux-toolbox.sh
