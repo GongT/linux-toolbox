@@ -2,5 +2,6 @@
 
 if command_exists docker; then
 	DOCKER=$(find_command docker)
-	emit "alias docker=\"${VAR_HERE}/bin/docker_wrap '${DOCKER}'\""
+	warp_bin_with_env docker bin/docker_wrap.sh \
+		"DOCKER=$DOCKER"
 fi

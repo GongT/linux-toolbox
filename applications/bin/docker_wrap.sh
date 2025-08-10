@@ -1,8 +1,5 @@
 #!/bin/bash
 
-DOCKER=$1
-shift
-
 function clean_images {
 	docker images | grep -E '<none>'  | awk '{print $3}' | tee /dev/stderr | xargs --no-run-if-empty docker rmi
 }

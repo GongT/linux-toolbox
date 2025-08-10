@@ -31,6 +31,12 @@ else
 	declare -xr SUDO="sudo"
 fi
 
+function _my_call() {
+	local B=$1 PATH="${MY_SCRIPT_ROOT}/bin:${PATH}"
+	shift
+	"$B" "$@"
+}
+
 if [[ " $* " != *' --user '* ]] && is_root; then
 	declare -r TARGET=/etc/profile.d/51-linux-toolbox.sh
 	MY_LIBEXEC=/usr/local/libexec/linux-toolbox
@@ -41,7 +47,7 @@ else
 	declare -r TARGET="${MY_LIBEXEC}/.BASHPROFILE"
 
 	ENTRY_FILE="$HOME/.bashrc"
-	file-section "$ENTRY_FILE" "MY LINUX TOOLBOX" "source '$TARGET'"
+	_my_call file-section "$ENTRY_FILE" "MY LINUX TOOLBOX" "source '$TARGET'"
 	declare -xr INSTALL_TYPE='user'
 	echo -e "\e[38;5;10m 🐧🐧🐧🐧 linux-toolbox @ ${INSTALL_TYPE}\e[0m"
 fi
