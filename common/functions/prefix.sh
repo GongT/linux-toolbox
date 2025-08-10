@@ -40,7 +40,7 @@ if [[ $TERM_PROGRAM == "vscode" ]]; then
 	fi
 fi
 
-case "\$-" in
+case "$-" in
 *i*)
 	# This shell is interactive
 	export USERNAME=''

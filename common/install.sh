@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-emit "declare -r MY_LIBEXEC=$MY_LIBEXEC"
+emit "if [[ -z \${MY_LIBEXEC-} ]]; then
+	declare -r MY_LIBEXEC=$MY_LIBEXEC
+fi"
 
 emit_file "functions/prefix.sh"
 

@@ -218,7 +218,7 @@ install_script quick-alias
 
 _debug_show_section "interactive..."
 emit 'if [[ $- == *i* ]]; then'
-install_script interactive
+__INDENT=$'\t' install_script interactive
 emit 'fi'
 
 _debug_show_section "bash source..."
