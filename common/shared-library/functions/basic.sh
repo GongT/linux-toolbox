@@ -53,3 +53,7 @@ function _exit_handle() {
 function register_exit_handle() {
 	trap _exit_handle EXIT
 }
+
+function grep_safe() {
+	grep "$@" || [[ $? -eq 1 ]]
+}

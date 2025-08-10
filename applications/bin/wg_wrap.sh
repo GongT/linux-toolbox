@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 declare -A IP_TO_NAME=()
 if ! [[ -t 1 ]]; then
-	exec "$@"
+	exec "${WG}" "$@"
 fi
 
 function resolve_ip() {
@@ -31,7 +31,7 @@ function show_color() {
 		fi
 	done
 
-	OUTPUT=$("$@" | grep -v --fixed-strings '(hidden)')
+	OUTPUT=$("${WG}" "$@" | grep -v --fixed-strings '(hidden)')
 	echo "$OUTPUT" | while IFS=$'\n' read -r LINE; do
 		if [[ $LINE == *"allowed ips"* ]]; then
 			echo -n "$LINE"
@@ -72,5 +72,5 @@ elif [[ $# -eq 2 ]] && [[ $2 == show ]]; then
 elif [[ $# -eq 3 ]] && [[ $2 == show ]] && [[ $3 != interfaces ]] && [[ $3 != --help ]]; then
 	show_color "$@"
 else
-	exec "$@"
+	exec "${WG}" "$@"
 fi

@@ -1,6 +1,6 @@
-#!/bin/bash
-
-DNF="$1"
+#!/usr/bin/env bash
+set -Eeuo pipefail
+shopt -s inherit_errexit extglob nullglob globstar lastpipe shift_verbose
 
 function _dnf() {
 	echo -e "\e[2m$ $SUDO${DNF} $*\e[0m" >&2
@@ -58,9 +58,9 @@ s)
 		e9=$(echo -ne '\e[38;5;9m')
 		e10=$(echo -ne '\e[38;5;10m')
 		# DNF="unbuffer /usr/bin/dnf"
-		_dnf list "$S" | grep -v '.i686' \
-			| sed "s#Available Packages#${e9}\0${e0}#g" \
-			| sed "s#Installed Packages#${e10}\0${e0}#g"
+		_dnf list "$S" | grep -v '.i686' |
+			sed "s#Available Packages#${e9}\0${e0}#g" |
+			sed "s#Installed Packages#${e10}\0${e0}#g"
 	fi
 	;;
 p)

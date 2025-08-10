@@ -1,52 +1,11 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
 set -Eeuo pipefail
-shopt -s lastpipe
+shopt -s inherit_errexit extglob nullglob globstar lastpipe shift_verbose
 
-function callstack() {
-	local -i SKIP=${1-1}
-	local -i i
-	for i in $(seq $SKIP $((${#FUNCNAME[@]} - 1))); do
-		if [[ ${BASH_SOURCE[$((i + 1))]+found} == "found" ]]; then
-			echo "  $i: ${BASH_SOURCE[$((i + 1))]}:${BASH_LINENO[$i]} ${FUNCNAME[$i]}()"
-		else
-			echo "  $i: ${FUNCNAME[$i]}()"
-		fi
-	done
-}
-function _exit_handle() {
-	RET=$?
-	echo -ne "\e[0m"
-	if [[ $RET -ne 0 ]]; then
-		callstack 1
-	fi
-	exit $RET
-}
-trap _exit_handle EXIT
+source "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/common/shared-library/include.sh"
 
 echo "starting installer...."
 
-function die() {
-	if [[ -t 2 ]]; then
-		{
-			tput oc
-			tput rs2
-			printf '\e[s'
-			tput rmcup
-			printf '\e[u'
-			printf "\r\e[K\e[38;5;9m"
-		} >&2
-	fi
-	printf "%s\n" "$*" >&2
-	if [[ -t 2 ]]; then
-		printf "\e[0m" >&2
-	fi
-	if [[ $- == *i* ]]; then
-		return 1
-	else
-		exit 1
-	fi
-}
 function pad() {
 	local i
 	for ((i = 0; i < $1; i++)); do echo -n '  '; done
@@ -57,10 +16,6 @@ cd $(dirname ${BASH_SOURCE}) ||
 
 export MY_SCRIPT_ROOT=$(pwd)
 export _INSTALLING_=$(pwd)
-export GEN_BIN_PATH="${MY_SCRIPT_ROOT}/.bin"
-export PATH+=":${GEN_BIN_PATH}:${MY_SCRIPT_ROOT}/bin"
-mkdir -p "${GEN_BIN_PATH}"
-echo -e "installing scripts into \e[38;5;14m${MY_SCRIPT_ROOT}\e[0m."
 
 if [[ -e /etc/profile.d/linux-toolbox.sh ]]; then
 	rm -f /etc/profile.d/linux-toolbox.sh
@@ -77,30 +32,48 @@ if touch /etc/profile.d/51-linux-toolbox.sh; then
 	MY_LIBEXEC=/usr/local/libexec/linux-toolbox
 	declare -xr SUDO=""
 else
-	declare -r TARGET=$GEN_BIN_PATH/.BASHPROFILE
 	MY_LIBEXEC="$HOME/.local/lib/linux-toolbox"
+	declare -r TARGET="${MY_LIBEXEC}/.BASHPROFILE"
 
 	ENTRY_FILE="$HOME/.bashrc"
 	file-section "$ENTRY_FILE" "MY LINUX TOOLBOX" "source '$TARGET'"
 	declare -xr SUDO="sudo"
 fi
+
+echo -e "installing scripts into \e[38;5;14m${MY_LIBEXEC}\e[0m."
+
+export GEN_BIN_PATH="${MY_LIBEXEC}/bin"
+export PATH+=":${GEN_BIN_PATH}"
+
+rm -rf "${GEN_BIN_PATH}"
+mkdir -p "${GEN_BIN_PATH}"
+cp -r "${MY_SCRIPT_ROOT}/bin/." "${GEN_BIN_PATH}"
+find "${GEN_BIN_PATH}" -type f | xargs chmod a+x
+path-var del "${GEN_BIN_PATH}" # prevent find_command return self
+
 function emit() {
-	echo "$@" >>"${TARGET}"
+	echo "${__INDENT}$*" >>"${TARGET}"
 }
 function emitf() {
-	printf "$@" >>"${TARGET}"
+	local FORMAT="${__INDENT}$1"
+	shift
+	printf "$FORMAT" "$@" >>"${TARGET}"
 }
 function emit_stdin() {
-	cat >>"${TARGET}"
+	sed "s|^|${__INDENT}|g" >>"${TARGET}"
 }
 function emit_file() {
-	cat "${_INSTALLING_}/$1" >>"${TARGET}"
+	local SRC="${_INSTALLING_}/$1"
+	emit "### === emit file: ${SRC#${MY_SCRIPT_ROOT}/} ==="
+	cat "${SRC}" | grep_safe -v '^#!' |
+		emit_stdin
+	# emit "### === end emit file: ${SRC#${MY_SCRIPT_ROOT}/} ==="
 }
 function emit_source() {
 	local CMD=$1
 	shift
 
-	echo -n "source ${VAR_HERE}/$CMD.sh" >>"${TARGET}"
+	echo -n "${__INDENT}source ${VAR_HERE}/$CMD.sh" >>"${TARGET}"
 	if [[ $# -eq 0 ]]; then
 		echo -n ' ""' >>"${TARGET}"
 	else
@@ -112,67 +85,91 @@ function emit_source() {
 	echo "" >>"${TARGET}"
 }
 SUDOLIST=()
+NOT_SUDOLIST=()
 function emit_alias_sudo() { # command line ...
 	SUDOLIST+=("alias $1='sudo --preserve-env $@'")
 }
 function emit_alias_sudo2() { # command line ...
-	local NAME=$1
+	local NAME=$1 ARGV
 	shift
-	SUDOLIST+=("alias $NAME='sudo --preserve-env $@'")
+	ARGV=$(_format_argv "$@")
+	SUDOLIST+=("alias $NAME='sudo --preserve-env $ARGV'")
+	NOT_SUDOLIST+=("alias $NAME='$ARGV'")
 }
-function copy_bin_with_env() {
-	local ENV="$1"
-	local SRC="$2"
-	local DST="${3-$(basename "$SRC")}"
-	local F="${_INSTALLING_}/$SRC"
-	local T="${GEN_BIN_PATH}/$DST"
-	rm -f "$T"
-	{
-		head -n 1 "$F"
-		echo
-		echo "$ENV"
-		echo
-		tail -n +2 "$F"
-	} >"$T"
-	chmod a+x "$T"
-}
-function copy_bin() {
-	local SRC="$1"
-	local DST="${2-$(basename "$SRC")}"
-	local F="${_INSTALLING_}/$SRC"
-	local T="${GEN_BIN_PATH}/$DST"
-	if [[ -e $T ]] && [[ "$(readlink "$T")" == "$F" ]]; then
+function emit_alias() {
+	if [[ $1 == '--sudo' ]]; then
+		shift
+		emit_alias_sudo2 "$@"
 		return
 	fi
-	local DIR=$(dirname "${T}")
 
-	F=$(realpath "--relative-to=${DIR}" "--relative-base=${MY_SCRIPT_ROOT}" "${F}")
+	local NAME=$1 ARGV
+	shift
 
-	rm -f "$T"
-	echo ln -s "${F}" "$T"
-	ln -s "${F}" "$T"
-	chmod a+x "$F"
+	ARGV=$(_format_argv "$@")
+	emit "alias $NAME='$ARGV'"
 }
-function copy_libexec() {
+function emit_source_alias() {
+	local ALIAS=$1 FILE="$2" _OUT_FILE
+
+	_OUT_FILE=$(copy_library "$FILE")
+	emit "alias ${ALIAS}='source ${_OUT_FILE}'"
+}
+function _format_argv() {
+	for I; do
+		printf '%q ' "$I"
+	done
+}
+function warp_bin_with_env() {
+	local DST="${GEN_BIN_PATH}/$1" SRC="${_INSTALLING_}/$2"
+	shift
+	shift
+
+	local ENV
+
+	rm -f "$DST"
+	{
+		head -n 1 "$SRC"
+		for ENV; do
+			printf 'export "%q"\n' "$ENV"
+		done
+		tail -n +2 "$SRC"
+	} >"$DST"
+	chmod a+x "$DST"
+}
+function copy_bin() {
+	local SRC="${_INSTALLING_}/$1"
+	local DST="${GEN_BIN_PATH}/${2-$(basename "$SRC")}"
+	if [[ -e ${DST} ]] && [[ "$(readlink "${DST}")" == "${SRC}" ]]; then
+		return
+	fi
+	local DIR=$(dirname "${DST}")
+
+	rm -f "$DST"
+	cp "${SRC}" "$DST"
+	chmod a+x "$DST"
+}
+function copy_library() {
 	local F="${_INSTALLING_}/$1"
 	local TN="${2-$(basename "${F}")}"
-	local T="$MY_LIBEXEC/$TN"
+	local T="$MY_LIBEXEC/helpers/$TN"
 	mkdir -p "$(dirname "$T")"
-	cat "$F" >"$T"
-	chmod a+x "$T"
+	cp "$F" "$T"
 	echo "$T"
 }
 function emit_path() {
-	local PA="${MY_SCRIPT_ROOT}/$1"
-	if [[ ! -d $PA ]]; then
+	local PA="$1"
+	if [[ ${PA} != /* ]] || [[ ! -d $PA ]]; then
 		die "required folder not exists: ${PA}"
 	fi
 
 	chmod a+rx "$PA"
 
-	emitf 'path-var prepend "$MY_SCRIPT_ROOT/"%q\n' "$1"
+	emitf 'path-var prepend %q\n' "${PA}"
 	path-var prepend "${PA}"
 }
+
+__INDENT=''
 function install_script() {
 	local FOLDER="${1}"
 
@@ -182,14 +179,15 @@ function install_script() {
 	pushd "${FOLDER}" >/dev/null ||
 		die "can't run install script: $(pwd)/${FOLDER}"
 	local _INSTALLING_=$(pwd) HERE=$(pwd)
-	local VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$MY_SCRIPT_ROOT"/}"
 
 	# echo -e "\e[2mHERE=$HERE\e[0m"
 	# echo -e "\e[2mVAR_HERE=$VAR_HERE\e[0m"
 
 	local -i _INSTALL_LEVEL_="${_INSTALL_LEVEL_+$_INSTALL_LEVEL_} + 1"
 
-	source "${_INSTALLING_}/${2-install}.sh"
+	local SRC="${_INSTALLING_}/${2-install}.sh"
+	emit "### === script: ${SRC#${MY_SCRIPT_ROOT}/} ==="
+	source "$SRC"
 
 	_INSTALL_LEVEL_="${_INSTALL_LEVEL_} - 1"
 
@@ -199,65 +197,80 @@ function install_script() {
 
 	popd >/dev/null
 	_INSTALLING_=$(pwd) HERE=$(pwd)
-	VAR_HERE="\$MY_SCRIPT_ROOT${HERE/"$MY_SCRIPT_ROOT"/}"
 }
 
 ### start
 echo "create ${TARGET}"
 [ -e "${TARGET}" ] && rm ${TARGET} || true
 
-emit "MY_LIBEXEC=$MY_LIBEXEC"
+_debug_show_section() {
+	echo -e "\n\e[38;5;14m: $*\e[0m" >&2
+}
 
-echo ": common tools..."
+_debug_show_section "common tools..."
 install_script common
 
-echo ": system-spec tools..."
+_debug_show_section "system-spec tools..."
 install_script system
 
-echo ": quick-alias..."
+_debug_show_section "quick-alias..."
 install_script quick-alias
 
-echo ": interactive..."
+_debug_show_section "interactive..."
 emit 'if [[ $- == *i* ]]; then'
 install_script interactive
 emit 'fi'
 
-echo ": bash source..."
+_debug_show_section "bash source..."
 install_script bash_source
 
-echo ": applications..."
+_debug_show_section "applications..."
 for FILE in "${MY_SCRIPT_ROOT}/applications/"*.sh; do
 	install_script applications $(basename "$FILE" .sh)
 done
 
-echo ": user apps..."
+_debug_show_section "user apps..."
 install_script user
 
+emit "if ! is_root ; then"
 if [[ ${#SUDOLIST[@]} -gt 0 ]]; then
-	emit "if ! is_root ; then"
 	for L in "${SUDOLIST[@]}"; do
-		emit $'\t'"$L"
+		emit "	$L"
 	done
-	emit "fi"
+else
+	emit '	:'
 fi
+emit "else"
+if [[ ${#NOT_SUDOLIST[@]} -gt 0 ]]; then
+	for L in "${NOT_SUDOLIST[@]}"; do
+		emit "	$L"
+	done
+else
+	emit "	:"
+fi
+emit "fi"
 
-echo ": ssh rc file..."
+_debug_show_section "ssh rc file..."
 if [[ -e ~/.bashrc ]]; then
 	sed -i "/LINUX_TOOLBOX_INITED/d" ~/.bashrc
 fi
 install_script rc
 
-echo -n "complete, try start it - "
+echo "removing comments..."
+sed -Ei "/^\s*#.*$/d" "$TARGET"
 
+if command_exists shfmt; then
+	echo "reformat it with shfmt..."
+	shfmt -s -ln=bash -bn -w "$TARGET" "$TARGET"
+fi
+
+
+echo -n "complete, try start it - "
 # shellcheck source=01-linux-toolbox.sh
 source "${TARGET}" ||
 	{
 		unlink "${TARGET}"
 		die "can't start scripts, install failed."
 	}
-
-if command_exists shfmt; then
-	shfmt -s -ln=bash -bn -w "$TARGET" "$TARGET"
-fi
 
 echo "ok."

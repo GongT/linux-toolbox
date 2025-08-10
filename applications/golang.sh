@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 
-if ! _command_exists go; then
+if ! command_exists go; then
 	return
 fi
 
+warp_bin_with_env go bin/golang.bin.sh \
+	"GOLANG=$(find_command go)"
 
-
-copy_bin_with_env "GOLANG=$(_find_command go)" bin/golang.bin.sh go
-
-go env -w GOCACHE="${SYSTEM_COMMON_CACHE:-/var/cache}/golang"
-go env -w GOMODCACHE="${SYSTEM_COMMON_CACHE:-/var/cache}/golang.mod"
-go env -w GO111MODULE=auto
-go env -w GOPROXY='https://proxy.golang.org'
-# go env -w GOPROXY=https://goproxy.io,direct
+emit_stdin <<'EOF'
+export GOCACHE="${SYSTEM_COMMON_CACHE:-/var/cache}/golang"
+export GOMODCACHE="${SYSTEM_COMMON_CACHE:-/var/cache}/golang.mod"
+export GO111MODULE=auto
+export GOPROXY='https://proxy.golang.org'
+# GOPROXY=https://goproxy.io,direct
+EOF

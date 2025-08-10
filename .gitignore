@@ -4,6 +4,5 @@ background/
 node_modules/
 systemd/generated
 .temp
-.bin/
 .swp
 local-history/

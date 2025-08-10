@@ -6,7 +6,10 @@ log() {
 	echo "$*" >&2
 }
 
-
+if [[ $SHELL != *"bash"* ]]; then
+	echo "current shell is ${SHELL}, re-execute as bash" >&2
+	exec sudo /usr/bin/bash "-$-" "$0"
+fi
 if [[ -e ${PASS_ENV_FILE:-} ]]; then
 	if [[ -e /etc/profile.d/50-environment.sh ]]; then
 		source /etc/profile.d/50-environment.sh
@@ -22,10 +25,23 @@ if [[ -e ${PASS_ENV_FILE:-} ]]; then
 	}
 
 	IGNORE_WGET_CONFIG_FLAG='--read-timeout=10 --continue --output-file=${COMMIT_ID}.wget.log'
-	RE=''
-	RE+="$(__replace_re VSCODE_AGENT_FOLDER);"
-	RE+="$(__replace_re VSC_TMP);"
-	RE+="$(__replace_re IGNORE_WGET_CONFIG_FLAG);"
+	MODIFY_REG=''
+	MODIFY_REG+="$(__replace_re VSCODE_AGENT_FOLDER);"
+	MODIFY_REG+="$(__replace_re VSC_TMP);"
+	MODIFY_REG+="$(__replace_re IGNORE_WGET_CONFIG_FLAG);"
+
+	if [[ -n ${PROXY-} ]]; then
+		log "override proxy settings with machine env: ${PROXY}"
+		HTTP_PROXY_INPUT="${PROXY}"
+		HTTPS_PROXY_INPUT="${PROXY}"
+	else
+		log "override proxy with empty string"
+		HTTP_PROXY_INPUT=""
+		HTTPS_PROXY_INPUT=""
+	fi
+
+	MODIFY_REG+="$(__replace_re HTTP_PROXY_INPUT);"
+	MODIFY_REG+="$(__replace_re HTTPS_PROXY_INPUT);"
 
 	if [[ "${PROXY-}" ]]; then
 		log "using proxy ${PROXY}"
@@ -36,33 +52,33 @@ if [[ -e ${PASS_ENV_FILE:-} ]]; then
 
 	STATE=start
 	while read -r LINE; do
-		if [[ -z ${LINE}  ]]; then
-			echo '' >> "${TMPF}"
+		if [[ -z ${LINE} ]]; then
+			echo '' >>"${TMPF}"
 			continue
-		elif [[ ${LINE} == bash || ${LINE} == sh  ]]; then
-			echo "### skip start shell: ${LINE}" >> "${TMPF}"
+		elif [[ ${LINE} == bash || ${LINE} == sh ]]; then
+			echo "### skip start shell: ${LINE}" >>"${TMPF}"
 			# echo $$
 			# echo "this will never run"
 			# exit 123
 		elif [[ ${LINE} == *mainScriptWrapper* ]]; then
-			echo "${LINE}" >> "${TMPF}"
-			while read -r LINE ; do
-				STMT=$(echo "${LINE}" | sed --unbuffered -E "$RE")
+			echo "${LINE}" >>"${TMPF}"
+			while read -r LINE; do
+				STMT=$(echo "${LINE}" | sed --unbuffered -E "${MODIFY_REG}")
 				if [[ ${LINE} == *mainScriptWrapper* ]]; then
-					echo "${STMT}" >> "${TMPF}"
+					echo "${STMT}" >>"${TMPF}"
 					log "CALL BASH TO RUN REPLACED SCRIPT"
 					bash "${TMPF}"
 					RET=$?
 					log "[one time script mode] script finished, code ${RET}."
 					exit "${RET}"
 				fi
-				echo "${STMT}" >> "${TMPF}"
+				echo "${STMT}" >>"${TMPF}"
 			done
 
 			echo "unepxect close input"
 			exit 123
 		else
-			echo "# + ${LINE}" >> "${TMPF}"
+			echo "# + ${LINE}" >>"${TMPF}"
 			eval "${LINE}"
 			# echo "[execue] ${LINE}" >&2
 		fi
@@ -73,23 +89,22 @@ else
 		source /etc/profile.d/50-environment.sh
 	fi
 
-	if [[ -z "${VSCODE_AGENT_FOLDER-}" ]]; then
+	if [[ -z ${VSCODE_AGENT_FOLDER-} ]]; then
 		log "no VSCODE_AGENT_FOLDER on this machine"
 		exec /usr/bin/bash "$@"
 	fi
 
 	log "force vscode install to $VSCODE_AGENT_FOLDER"
-	if [[ -n "${XDG_RUNTIME_DIR-}" ]]; then
+	if [[ -n ${XDG_RUNTIME_DIR-} ]]; then
 		export VSC_TMP="${XDG_RUNTIME_DIR}/vscode-server"
 	else
 		export VSC_TMP="/run/vscode-server/${UID-$(id -u)}"
-		mkdir --mode 0777 "/run/vscode-server"
+		mkdir -p --mode 0777 "/run/vscode-server"
 	fi
 	mkdir -p "${VSC_TMP}"
 
-
 	RAND=${XDG_SESSION_ID-}
-	if [[ -z "${XDG_SESSION_ID-}" ]]; then
+	if [[ -z ${XDG_SESSION_ID-} ]]; then
 		RAND=$RANDOM
 	fi
 
@@ -97,15 +112,15 @@ else
 	TMPF="$VSC_TMP/install-script.${RAND}.sh"
 
 	SELF="$(realpath "${BASH_SOURCE[0]}")"
-	export -p > "${PASS_ENV_FILE}"
-	declare -p RAND TMPF >> "${PASS_ENV_FILE}"
+	export -p >"${PASS_ENV_FILE}"
+	declare -p RAND TMPF >>"${PASS_ENV_FILE}"
 
 	log "SCRIPT DUMP TO $TMPF"
 
-#		"--property=ExecStopPost=-/usr/bin/rm -f '${TMPF}'" \
+	#		"--property=ExecStopPost=-/usr/bin/rm -f '${TMPF}'" \
 	touch /tmp/vscode-skip-server-requirements-check
 
-	if [[ $(id -u ) -eq 0 ]]; then
+	if [[ $(id -u) -eq 0 ]]; then
 		log "running as root, using systemd-run"
 		MAYBEUSER=()
 	else

@@ -39,3 +39,14 @@ if [[ $TERM_PROGRAM == "vscode" ]]; then
 		unset VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT
 	fi
 fi
+
+case "\$-" in
+*i*)
+	# This shell is interactive
+	export USERNAME=''
+	unset USERNAME
+	;;
+*)
+	# This shell is not interactive
+	return
+esac

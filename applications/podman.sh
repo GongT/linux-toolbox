@@ -3,10 +3,8 @@
 if command_exists podman; then
 	echo "podman exists"
 	PODMAN=$(find_command podman)
-	copy_bin_with_env \
-		"PODMAN='$PODMAN'" \
-		"bin/podman_wrap.sh" \
-		"podman"
+	warp_bin_with_env podman bin/podman_wrap.sh \
+		"PODMAN=$PODMAN"
 else
 	echo "podman not found"
 fi
@@ -14,12 +12,10 @@ fi
 cru d "podman-cleanup" "podman-auto-pull"
 
 if command_exists buildah; then
-	echo "podman buildah"
+	echo "buildah exists"
 	BUILDAH=$(find_command buildah)
-	copy_bin_with_env \
-		"BUILDAH='$BUILDAH'" \
-		"bin/buildah_wrap.sh" \
-		"buildah"
+	warp_bin_with_env buildah bin/buildah_wrap.sh \
+		"BUILDAH=$BUILDAH"
 else
-	echo "podman not found"
+	echo "buildah not found"
 fi

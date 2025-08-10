@@ -1,10 +1,7 @@
 #!/bin/bash
 
-MACHINECTL=$1
-shift
-
 if ! [ -t 1 ] || ! [ -t 0 ]; then
-	exec "$@"
+	exec "${MACHINECTL}" "$@"
 fi
 
 function reload_network() {
