@@ -5,3 +5,6 @@ if ! command_exists node ; then
 fi
 
 copy_bin bin/update-nodejs
+emit "
+path-var add-rel ./node_modules/.bin
+"
