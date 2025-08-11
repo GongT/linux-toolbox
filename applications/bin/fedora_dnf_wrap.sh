@@ -7,8 +7,6 @@ function _dnf() {
 	${SUDO} "${DNF}" "$@"
 }
 
-shift
-
 function parse_provide_file_arg() {
 	function arg() {
 		echo -ne ${ARG}
