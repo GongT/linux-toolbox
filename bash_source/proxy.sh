@@ -14,7 +14,7 @@ if [[ $* == "on" ]]; then
 		export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY}
 		echo "Using proxy server $PROXY" >&2
 		init_noproxy_if_not_set
-		SEP=, list normalize NO_PROXY
+		SEP=, list dedup NO_PROXY
 		export NO_PROXY
 		export no_proxy="$NO_PROXY"
 	fi
@@ -53,7 +53,7 @@ elif [ "$1" = "no" ]; then
 		echo -e "Usage: proxy no [add url|del url|dump]" >&2
 		return 1
 	fi
-	SEP=, list normalize NO_PROXY
+	SEP=, list dedup NO_PROXY
 	envfile-system NO_PROXY "$NO_PROXY"
 	# export NO_PROXY="$NO_PROXY"
 else
