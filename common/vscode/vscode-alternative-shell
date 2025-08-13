@@ -6,18 +6,41 @@ log() {
 	echo "$*" >&2
 }
 
-if [[ $SHELL != *"bash"* ]]; then
-	echo "current shell is ${SHELL}, re-execute as bash" >&2
-	exec sudo /usr/bin/bash "-$-" "$0"
-fi
-if [[ -e ${PASS_ENV_FILE:-} ]]; then
+load_envs() {
 	if [[ -e /etc/profile.d/50-environment.sh ]]; then
+		echo "load system environment" >&2
+		set -a
 		source /etc/profile.d/50-environment.sh
+		set +a
 	fi
+	if [[ -e "${HOME-}/.bash_environment.sh" ]]; then
+		echo "load user environment" >&2
+		set -a
+		source "${HOME}/.bash_environment.sh"
+		set +a
+	fi
+}
+
+if [[ $SHELL != *"bash"* ]]; then
+	if [[ $# -eq 0 ]]; then
+		SELF="$(realpath "${BASH_SOURCE[0]}")"
+		set -- "${SELF}"
+	fi
+
+	echo "current shell is ${SHELL}, re-execute as bash -$- $*" >&2
+	export SHELL=/usr/bin/bash
+	exec /usr/bin/bash "-$-" "$@"
+fi
+
+if [[ -e ${PASS_ENV_FILE:-} ]]; then
+	load_envs
+
+	set -a
 	source "${PASS_ENV_FILE}"
+	set +a
+
 	unlink "${PASS_ENV_FILE}"
 	unset PASS_ENV_FILE
-
 	declare -p TMPF RAND
 
 	function __replace_re() {
@@ -25,6 +48,7 @@ if [[ -e ${PASS_ENV_FILE:-} ]]; then
 	}
 
 	IGNORE_WGET_CONFIG_FLAG='--read-timeout=10 --continue --output-file=${COMMIT_ID}.wget.log'
+	echo "wget is: $(command -v wget)"
 	MODIFY_REG=''
 	MODIFY_REG+="$(__replace_re VSCODE_AGENT_FOLDER);"
 	MODIFY_REG+="$(__replace_re VSC_TMP);"
@@ -52,32 +76,67 @@ if [[ -e ${PASS_ENV_FILE:-} ]]; then
 
 	STATE=start
 	while read -r LINE; do
-		if [[ -z ${LINE} ]]; then
+		if [[ -z ${LINE} ]]; then # empty line
 			echo '' >>"${TMPF}"
 			continue
-		elif [[ ${LINE} == bash || ${LINE} == sh ]]; then
+		elif [[ ${LINE} == bash || ${LINE} == sh ]]; then # deny start subshell
 			echo "### skip start shell: ${LINE}" >>"${TMPF}"
 			# echo $$
 			# echo "this will never run"
 			# exit 123
 		elif [[ ${LINE} == *mainScriptWrapper* ]]; then
+			# saw the start of main function definition
 			echo "${LINE}" >>"${TMPF}"
 			while read -r LINE; do
+				# dump all codes into file (with string replace)
 				STMT=$(echo "${LINE}" | sed --unbuffered -E "${MODIFY_REG}")
+
 				if [[ ${LINE} == *mainScriptWrapper* ]]; then
+					# saw the actual call to main function
+
+					cat <<-'EOF' >>"${TMPF}"
+						## --- pre-run-hook
+						SLEEP_BIN=$(command -v sleep)
+						builtin echo "replacing sleep $SLEEP_BIN with function" >&2
+						sleep() {
+							local T=$1
+							if [[ $T == *'.'* ]] || [[ $T -lt 30 ]]; then
+								"${SLEEP_BIN}" "$T"
+								return
+							fi
+							# server is (hopefully) stable
+
+							"${SLEEP_BIN}" "$T"
+							if systemctl status "${SYSTEMD_CONTROLLER_SESSION}" --no-legend --no-pager -n0 | grep -q abandoned; then
+								builtin echo "ssh session seems to be abandoned" >&2
+								exit 0
+							else
+								builtin echo "ssh session still exists"
+							fi
+						}
+
+						## --- pre-run-hook end
+					EOF
 					echo "${STMT}" >>"${TMPF}"
+
 					log "CALL BASH TO RUN REPLACED SCRIPT"
 					bash "${TMPF}"
 					RET=$?
+
+					# the server session will never return
+					# but maybe some job will?
+					# if this is un-needed, then I can use `source` instead of `bash`
+
 					log "[one time script mode] script finished, code ${RET}."
 					exit "${RET}"
 				fi
+
 				echo "${STMT}" >>"${TMPF}"
 			done
 
-			echo "unepxect close input"
+			echo "unexpected close input"
 			exit 123
-		else
+		else # basic setup section (handshake)
 			echo "# + ${LINE}" >>"${TMPF}"
 			eval "${LINE}"
 			# echo "[execue] ${LINE}" >&2
@@ -85,16 +144,14 @@ if [[ -e ${PASS_ENV_FILE:-} ]]; then
 	done
 else
 	log "starting vscode remote shell"
-	if [[ -e /etc/profile.d/50-environment.sh ]]; then
-		source /etc/profile.d/50-environment.sh
-	fi
+	load_envs
 
 	if [[ -z ${VSCODE_AGENT_FOLDER-} ]]; then
 		log "no VSCODE_AGENT_FOLDER on this machine"
 		exec /usr/bin/bash "$@"
 	fi
 
-	log "force vscode install to $VSCODE_AGENT_FOLDER"
+	log "force vscode install to ${VSCODE_AGENT_FOLDER}"
 	if [[ -n ${XDG_RUNTIME_DIR-} ]]; then
 		export VSC_TMP="${XDG_RUNTIME_DIR}/vscode-server"
 	else
@@ -105,33 +162,44 @@ else
 
 	RAND=${XDG_SESSION_ID-}
 	if [[ -z ${XDG_SESSION_ID-} ]]; then
-		RAND=$RANDOM
+		RAND=${RANDOM}
 	fi
 
 	PASS_ENV_FILE="${VSC_TMP}/env.${RAND}.txt"
-	TMPF="$VSC_TMP/install-script.${RAND}.sh"
+	TMPF="${VSC_TMP}/install-script.${RAND}.sh"
+	log "SCRIPT WILL DUMP TO $TMPF"
 
-	SELF="$(realpath "${BASH_SOURCE[0]}")"
-	export -p >"${PASS_ENV_FILE}"
-	declare -p RAND TMPF >>"${PASS_ENV_FILE}"
+	if [[ ! -e /tmp/vscode-skip-server-requirements-check ]]; then
+		touch /tmp/vscode-skip-server-requirements-check
+	fi
 
-	log "SCRIPT DUMP TO $TMPF"
-
-	#		"--property=ExecStopPost=-/usr/bin/rm -f '${TMPF}'" \
-	touch /tmp/vscode-skip-server-requirements-check
-
+	SUDO=()
 	if [[ $(id -u) -eq 0 ]]; then
-		log "running as root, using systemd-run"
-		MAYBEUSER=()
+		log "running as root"
+		MAYBEUSER=(--system)
+	elif [[ ${VSCODE_AS_USER:-} != yes ]]; then
+		log "running as user, using sudo [VSCODE_AS_USER=${VSCODE_AS_USER:-}]"
+		MAYBEUSER=(--system)
+		SUDO=(sudo)
+		declare -xr HOME=/root
+		unset DBUS_SESSION_BUS_ADDRESS XDG_SESSION_ID XDG_RUNTIME_DIR
 	else
-		log "running as user, using systemd-run --user"
+		log "running as user, using --user session [VSCODE_AS_USER=${VSCODE_AS_USER:-}]"
 		MAYBEUSER=(--user)
 	fi
 
-	exec systemd-run "${MAYBEUSER[@]}" --slice=vscode.slice --send-sighup \
+	export SYSTEMD_CONTROLLER_SESSION=$(systemctl whoami "$$" || true)
+
+	export -p | grep -viE '\b(user|shlvl|pwd|oldpwd|_)=' | cat >"${PASS_ENV_FILE}"
+	declare -p RAND TMPF >>"${PASS_ENV_FILE}"
+
+	SELF="$(realpath "${BASH_SOURCE[0]}")"
+	exec "${SUDO[@]}" systemd-run "${MAYBEUSER[@]}" "--slice=vscode.slice" --send-sighup \
 		"--working-directory=$VSC_TMP" --pipe --wait \
 		"--setenv=PASS_ENV_FILE=${PASS_ENV_FILE}" \
-		--service-type=exec "--unit=vscode-remote-$RAND.service" \
-		"--property=Description=vscremote@$RAND" \
+		"--service-type=exec" \
+		"--unit=vscode-remote-$RAND.service" \
+		"--property=Description=Visual Studio Code Remote @ $RAND" \
+		"--property=OOMPolicy=stop" \
 		/usr/bin/bash --norc --noprofile "$SELF"
 fi
