@@ -6,21 +6,6 @@ log() {
 	echo "$*" >&2
 }
 
-load_envs() {
-	if [[ -e /etc/profile.d/50-environment.sh ]]; then
-		echo "load system environment" >&2
-		set -a
-		source /etc/profile.d/50-environment.sh
-		set +a
-	fi
-	if [[ -e "${HOME-}/.bash_environment.sh" ]]; then
-		echo "load user environment" >&2
-		set -a
-		source "${HOME}/.bash_environment.sh"
-		set +a
-	fi
-}
-
 if [[ $SHELL != *"bash"* ]]; then
 	if [[ $# -eq 0 ]]; then
 		SELF="$(realpath "${BASH_SOURCE[0]}")"
@@ -33,48 +18,87 @@ if [[ $SHELL != *"bash"* ]]; then
 fi
 
 if [[ -e ${PASS_ENV_FILE:-} ]]; then
-	load_envs
-
-	set -a
 	source "${PASS_ENV_FILE}"
-	set +a
-
 	unlink "${PASS_ENV_FILE}"
 	unset PASS_ENV_FILE
-	declare -p TMPF RAND
+	declare -p TMPF RAND PROXY
+	echo >"${TMPF}"
+
+	# SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+
+	# {
+	# 	echo =============================================
+	# 	env
+	# 	echo =============================================
+	# } >&2
 
 	function __replace_re() {
-		printf "s|^%s=.*$|%s=\"%s\"|" "$1" "$1" "${!1}"
+		local VAL="${2-${!1}}"
+		printf "s|^%s=.*$|%s=\"%s\"|" "$1" "$1" "${VAL}"
 	}
 
-	IGNORE_WGET_CONFIG_FLAG='--read-timeout=10 --continue --output-file=${COMMIT_ID}.wget.log'
-	echo "wget is: $(command -v wget)"
 	MODIFY_REG=''
 	MODIFY_REG+="$(__replace_re VSCODE_AGENT_FOLDER);"
 	MODIFY_REG+="$(__replace_re VSC_TMP);"
-	MODIFY_REG+="$(__replace_re IGNORE_WGET_CONFIG_FLAG);"
 
-	if [[ -n ${PROXY-} ]]; then
+	### replace wget command
+	P_TTY="/proc/$$/fd/2"
+	WGET="$(command -v wget)"
+	echo "wget is: ${WGET} | replaced to write output to ${P_TTY}"
+	cat <<-EOF >>"${TMPF}"
+		function wget() {
+			local ARGS=("\$@") WGET="${WGET}"
+			echo "wget called with: \${ARGS[*]}" >/dev/tty
+			"${WGET}" "\${ARGS[@]}" 2>&1 | tee "${P_TTY}"
+		}
+	EOF
+	MODIFY_REG+="$(__replace_re IGNORE_WGET_CONFIG_FLAG "");"
+
+	if wget --version | grep -qiF wget2; then
+		MODIFY_REG+="$(__replace_re WGET_TRIES_SEGMENT "--force-progress --read-timeout=10 --continue");"
+	else
+		MODIFY_REG+="$(__replace_re WGET_TRIES_SEGMENT "--progress=bar --show-progress --read-timeout=10 --continue");"
+	fi
+
+	### replace sleep command
+	cat <<-'EOF' >>"${TMPF}"
+		SLEEP_BIN=$(command -v sleep)
+		builtin echo "replacing sleep $SLEEP_BIN with function" >&2
+		sleep() {
+			local T=$1
+			if [[ $T == *'.'* ]] || [[ $T -lt 30 ]]; then
+				"${SLEEP_BIN}" "$T"
+				return
+			fi
+			# server is (hopefully) stable
+
+			"${SLEEP_BIN}" "$T"
+			if systemctl status "${SYSTEMD_CONTROLLER_SESSION}" --no-legend --no-pager -n0 | grep -q abandoned; then
+				builtin echo "ssh session seems to be abandoned" >&2
+				exit 0
+			else
+				builtin echo "ssh session still exists"
+			fi
+		}
+	EOF
+
+
+	if [[ -n ${PROXY:-} ]]; then
 		log "override proxy settings with machine env: ${PROXY}"
 		HTTP_PROXY_INPUT="${PROXY}"
 		HTTPS_PROXY_INPUT="${PROXY}"
+		export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} \
+			HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY} \
+			NO_PROXY="10.*,192.*,127.*,172.*"
 	else
 		log "override proxy with empty string"
 		HTTP_PROXY_INPUT=""
 		HTTPS_PROXY_INPUT=""
 	fi
 
-	MODIFY_REG+="$(__replace_re HTTP_PROXY_INPUT);"
-	MODIFY_REG+="$(__replace_re HTTPS_PROXY_INPUT);"
+	MODIFY_REG+="$(__replace_re HTTP_PROXY_INPUT "${HTTP_PROXY_INPUT}");"
+	MODIFY_REG+="$(__replace_re HTTPS_PROXY_INPUT "${HTTPS_PROXY_INPUT}");"
 
-	if [[ "${PROXY-}" ]]; then
-		log "using proxy ${PROXY}"
-		export https_proxy=${PROXY} http_proxy=${PROXY} all_proxy=${PROXY} \
-			HTTPS_PROXY=${PROXY} HTTP_PROXY=${PROXY} ALL_PROXY=${PROXY} \
-			NO_PROXY="10.*,192.*,127.*,172.*"
-	fi
-
-	STATE=start
 	while read -r LINE; do
 		if [[ -z ${LINE} ]]; then # empty line
 			echo '' >>"${TMPF}"
@@ -90,34 +114,10 @@ if [[ -e ${PASS_ENV_FILE:-} ]]; then
 			while read -r LINE; do
 				# dump all codes into file (with string replace)
 				STMT=$(echo "${LINE}" | sed --unbuffered -E "${MODIFY_REG}")
+				echo "${STMT}" >>"${TMPF}"
 
 				if [[ ${LINE} == *mainScriptWrapper* ]]; then
 					# saw the actual call to main function
-
-					cat <<-'EOF' >>"${TMPF}"
-						## --- pre-run-hook
-						SLEEP_BIN=$(command -v sleep)
-						builtin echo "replacing sleep $SLEEP_BIN with function" >&2
-						sleep() {
-							local T=$1
-							if [[ $T == *'.'* ]] || [[ $T -lt 30 ]]; then
-								"${SLEEP_BIN}" "$T"
-								return
-							fi
-							# server is (hopefully) stable
-
-							"${SLEEP_BIN}" "$T"
-							if systemctl status "${SYSTEMD_CONTROLLER_SESSION}" --no-legend --no-pager -n0 | grep -q abandoned; then
-								builtin echo "ssh session seems to be abandoned" >&2
-								exit 0
-							else
-								builtin echo "ssh session still exists"
-							fi
-						}
-
-						## --- pre-run-hook end
-					EOF
-					echo "${STMT}" >>"${TMPF}"
 
 					log "CALL BASH TO RUN REPLACED SCRIPT"
 					bash "${TMPF}"
@@ -130,8 +130,6 @@ if [[ -e ${PASS_ENV_FILE:-} ]]; then
 					log "[one time script mode] script finished, code ${RET}."
 					exit "${RET}"
 				fi
-
-				echo "${STMT}" >>"${TMPF}"
 			done
 
 			echo "unexpected close input"
@@ -143,36 +141,53 @@ if [[ -e ${PASS_ENV_FILE:-} ]]; then
 		fi
 	done
 else
-	log "starting vscode remote shell"
-	load_envs
+	printf "\e[32mstarting vscode remote shell\e[0m\n"
 
+	### load envs
+	if [[ -e /etc/profile.d/50-environment.sh ]]; then
+		echo "load system environment" >&2
+		source /etc/profile.d/50-environment.sh
+	fi
+	if [[ -e "${HOME-}/.bash_environment.sh" ]]; then
+		echo "load user environment" >&2
+		source "${HOME}/.bash_environment.sh"
+	else
+		echo "user environment not exists: ${HOME-}/.bash_environment.sh" >&2
+	fi
+
+	### run as this file never exists
 	if [[ -z ${VSCODE_AGENT_FOLDER-} ]]; then
 		log "no VSCODE_AGENT_FOLDER on this machine"
 		exec /usr/bin/bash "$@"
 	fi
+	export VSCODE_AGENT_FOLDER
 
+	### prepare runtime folder
 	log "force vscode install to ${VSCODE_AGENT_FOLDER}"
 	if [[ -n ${XDG_RUNTIME_DIR-} ]]; then
-		export VSC_TMP="${XDG_RUNTIME_DIR}/vscode-server"
+		VSC_TMP="${XDG_RUNTIME_DIR}/vscode-server"
 	else
-		export VSC_TMP="/run/vscode-server/${UID-$(id -u)}"
+		VSC_TMP="/run/vscode-server/${UID-$(id -u)}"
 		mkdir -p --mode 0777 "/run/vscode-server"
 	fi
 	mkdir -p "${VSC_TMP}"
+	export VSC_TMP
 
 	RAND=${XDG_SESSION_ID-}
 	if [[ -z ${XDG_SESSION_ID-} ]]; then
 		RAND=${RANDOM}
 	fi
-
-	PASS_ENV_FILE="${VSC_TMP}/env.${RAND}.txt"
-	TMPF="${VSC_TMP}/install-script.${RAND}.sh"
-	log "SCRIPT WILL DUMP TO $TMPF"
+	export RAND
 
 	if [[ ! -e /tmp/vscode-skip-server-requirements-check ]]; then
 		touch /tmp/vscode-skip-server-requirements-check
 	fi
 
+	PASS_ENV_FILE="${VSC_TMP}/env.${RAND}.sh"
+	export TMPF="${VSC_TMP}/install-script.${RAND}.sh"
+	log "SCRIPT WILL DUMP TO $TMPF"
+
+	# calculate arguments
 	SUDO=()
 	if [[ $(id -u) -eq 0 ]]; then
 		log "running as root"
@@ -181,17 +196,34 @@ else
 		log "running as user, using sudo [VSCODE_AS_USER=${VSCODE_AS_USER:-}]"
 		MAYBEUSER=(--system)
 		SUDO=(sudo)
-		declare -xr HOME=/root
+		declare -x HOME=/root
 		unset DBUS_SESSION_BUS_ADDRESS XDG_SESSION_ID XDG_RUNTIME_DIR
 	else
 		log "running as user, using --user session [VSCODE_AS_USER=${VSCODE_AS_USER:-}]"
 		MAYBEUSER=(--user)
 	fi
 
+	# store environments
 	export SYSTEMD_CONTROLLER_SESSION=$(systemctl whoami "$$" || true)
 
-	export -p | grep -viE '\b(user|shlvl|pwd|oldpwd|_)=' | cat >"${PASS_ENV_FILE}"
-	declare -p RAND TMPF >>"${PASS_ENV_FILE}"
+	export -p | grep -viE ' (USER|SHLVL|PWD|OLDPWD|_|MEMORY_PRESSURE_[A-Z_]+|INVOCATION_ID)=' | cat >"${PASS_ENV_FILE}"
+
+	# {
+	# 	echo =============================================
+	# 	cat "${PASS_ENV_FILE}"
+	# 	echo =============================================
+	# } >&2
+
+	if [[ ${#SUDO[@]} -ne 0 ]]; then
+		cat <<-EOF >>"${PASS_ENV_FILE}"
+			if [[ -e "/root/.bash_environment.sh" ]]; then
+				echo "load root user environment" >&2
+				source "/root/.bash_environment.sh"
+			else
+				echo "root user environment not exists: /root/.bash_environment.sh" >&2
+			fi
+		EOF
+	fi
 
 	SELF="$(realpath "${BASH_SOURCE[0]}")"
 	exec "${SUDO[@]}" systemd-run "${MAYBEUSER[@]}" "--slice=vscode.slice" --send-sighup \
