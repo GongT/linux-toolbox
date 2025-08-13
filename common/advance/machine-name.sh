@@ -15,8 +15,8 @@ function set-prompt() {
 		fi
 	fi
 
-	if [[ $SHELL != "/bin/bash" ]]; then
-		export PS1="${VAL}${ENDING}"
+	if [[ $SHELL != *"/bash" ]]; then
+		export PS1="${VAL} $(basename "${SHELL}")${ENDING} "
 	elif is_root; then
 		export PS1="[\[\e[38;5;${CUSTOM_PROMPT_COLOR-9}m\]$VAL\[\e[0m\] \W]# "
 	else
