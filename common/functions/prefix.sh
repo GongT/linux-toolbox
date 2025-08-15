@@ -43,10 +43,12 @@ fi
 case "$-" in
 *i*)
 	# This shell is interactive
-	export USERNAME=''
-	unset USERNAME
 	;;
 *)
 	# This shell is not interactive
 	return
 esac
+
+
+export CLIENT_USERNAME="${USERNAME}"
+unset USERNAME
