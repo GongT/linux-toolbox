@@ -226,12 +226,17 @@ else
 	fi
 
 	SELF="$(realpath "${BASH_SOURCE[0]}")"
-	exec "${SUDO[@]}" systemd-run "${MAYBEUSER[@]}" "--slice=vscode.slice" --send-sighup \
+	exec "${SUDO[@]}" systemd-run "${MAYBEUSER[@]}" "--slice=vscode.slice" \
+		--send-sighup \
+		--collect \
 		"--working-directory=$VSC_TMP" --pipe --wait \
 		"--setenv=PASS_ENV_FILE=${PASS_ENV_FILE}" \
 		"--service-type=exec" \
 		"--unit=vscode-remote-$RAND.service" \
 		"--property=Description=Visual Studio Code Remote @ $RAND" \
 		"--property=OOMPolicy=stop" \
+		"--property=OOMScoreAdjust=200" \
+		"--property=Nice=15" \
+		"--property=LimitNICE=10" \
 		/usr/bin/bash --norc --noprofile "$SELF"
 fi
