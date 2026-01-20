@@ -2,13 +2,16 @@ if ! command_exists git; then
 	return 0
 fi
 
+GIT_BIN=$(find_command git)
+warp_bin_with_env git bin/git_wrap.sh \
+	"GIT_BIN=${GIT_BIN}"
+
 emit_file alias/git.sh
-copy_bin bin/git-find-large
 
 single_configure_user() {
 	local field="$1" value="$2"
-	git config --system --unset --all "$field" &>/dev/null || : # 删除key如果不存在，会返回错误，需要忽略
-	git config --global --replace-all "$field" "$value"
+	"${GIT_BIN}" config unset --system --all "$field" &>/dev/null || : # 删除key如果不存在，会返回错误，需要忽略
+	"${GIT_BIN}" config set --global --all "$field" "$value"
 }
 
 single_configure_system() {
@@ -18,8 +21,14 @@ single_configure_system() {
 		single_configure_user "$field" "$value"
 		return
 	fi
-	git config --global --unset --all "$field" &>/dev/null || : # 删除key如果不存在，会返回错误，需要忽略
-	git config --system --replace-all "$field" "$value"
+	"${GIT_BIN}" config unset --global --all "$field" &>/dev/null || : # 删除key如果不存在，会返回错误，需要忽略
+	"${GIT_BIN}" config set --system --all "$field" "$value"
+}
+
+remove_configure() {
+	local field="$1"
+	"${GIT_BIN}" config unset --system --all "$field" &>/dev/null || :
+	"${GIT_BIN}" config unset --global --all "$field" &>/dev/null || :
 }
 
 single_configure_single_user() {
@@ -32,30 +41,11 @@ single_configure_single_user() {
 }
 
 has_config() {
-	git config get "$1" &>/dev/null
+	"${GIT_BIN}" config get "$1" &>/dev/null
 }
 
-ask_user_info() {
-	local email
-	read -r -p "输入 git 邮箱:" email
-
-	email="${email%% }"
-	email="${email## }"
-
-	export USER_EMAIL="$email"
-}
-
-single_configure_single_user user.name "$USER_DISPLAYNAME"
-if [[ ${USER_EMAIL-} == "" ]]; then
-	if has_config user.email; then
-		USER_EMAIL=$(git config --get user.email || true)
-	fi
-
-	if [[ ${USER_EMAIL-} == "" ]]; then
-		ask_user_info
-	fi
-fi
-single_configure_single_user user.email "${USER_EMAIL}"
+remove_configure user.name
+remove_configure user.email
 
 single_configure_user pull.rebase true
 single_configure_system push.default upstream

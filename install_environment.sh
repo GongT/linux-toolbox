@@ -333,17 +333,3 @@ source "${TARGET}" ||
 	}
 
 echo "ok."
-
-source "./common/advance/environment-file.sh"
-if is_single_user_mode; then
-	envfile-system USER_DISPLAYNAME "$USER_DISPLAYNAME"
-else
-	envfile-user USER_DISPLAYNAME "$USER_DISPLAYNAME"
-fi
-if [[ ${USER_EMAIL+found} == found ]]; then
-	if is_single_user_mode; then
-		envfile-system USER_EMAIL "$USER_EMAIL"
-	else
-		envfile-user USER_EMAIL "$USER_EMAIL"
-	fi
-fi
