@@ -5,8 +5,9 @@ shopt -s inherit_errexit extglob nullglob globstar lastpipe shift_verbose
 WHAT=${1:-}
 
 blink() {
-    echo "Blinking disk: ${I}"
-    dd "if=${WHAT}" of=/dev/null bs=1M count=100 >/dev/null 2>&1
+    local WHAT=$1
+    echo "Blinking disk: ${WHAT}"
+    dd "if=${WHAT}" "iseek=${RANDOM}" of=/dev/null bs=1M count=100 >/dev/null 2>&1
     sleep 1
 }
 
@@ -24,6 +25,7 @@ if [[ "${WHAT}" ]]; then
         blink "${WHAT}"
     done
 else
+    echo "Blinking all SATA disks..."
     while true; do
         for I in /dev/sd*; do
             if [[ ${I} =~ [0-9]$ ]]; then

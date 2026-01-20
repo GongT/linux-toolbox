@@ -32,8 +32,9 @@ function parse_provide_file_arg() {
 		return
 	fi
 	if arg | grep -qE '[^/.]+$'; then
-		ARGS+=("*/bin/$ARG")
-		ARGS+=("*/sbin/$ARG")
+		for dir in /usr/bin /usr/sbin /usr/local/bin; do
+			ARGS+=("${dir}/$ARG")
+		done
 		return
 	fi
 }

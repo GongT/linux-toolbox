@@ -141,7 +141,7 @@ if [[ -e ${PASS_ENV_FILE:-} ]]; then
 		fi
 	done
 else
-	printf "\e[32mstarting vscode remote shell\e[0m\n"
+	printf "\e[32mserver hello: starting vscode remote shell\e[0m\n"
 
 	### load envs
 	if [[ -e /etc/profile.d/50-environment.sh ]]; then
@@ -157,7 +157,7 @@ else
 
 	### run as this file never exists
 	if [[ -z ${VSCODE_AGENT_FOLDER-} ]]; then
-		log "no VSCODE_AGENT_FOLDER on this machine"
+		log "no VSCODE_AGENT_FOLDER on this machine, skip alternative shell..."
 		exec /usr/bin/bash "$@"
 	fi
 	export VSCODE_AGENT_FOLDER
