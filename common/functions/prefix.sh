@@ -50,5 +50,5 @@ case "$-" in
 esac
 
 
-export CLIENT_USERNAME="${USERNAME}"
-unset USERNAME
+# export CLIENT_USERNAME="${USER_DISPLAYNAME:-${USERNAME}}"
+# unset USERNAME

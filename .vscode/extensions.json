@@ -1,9 +1,7 @@
 {
 	"recommendations": [
-		"foxundermoon.shell-format",
 		"timonwong.shellcheck",
 		"mads-hartmann.bash-ide-vscode",
-		"editorconfig.editorconfig",
 		"aaron-bond.better-comments"
 	],
 	"unwantedRecommendations": []

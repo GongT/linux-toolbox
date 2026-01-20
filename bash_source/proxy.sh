@@ -58,7 +58,7 @@ elif [ "$1" = "no" ]; then
 	# export NO_PROXY="$NO_PROXY"
 else
 	echo -e "not support: $*" >&2
-	echo -e "Usage: proxy [on|off|set|get|test|no]" >&2
+	echo -e "Usage: proxy [on|off|set|get|test|no [add|del|dump]]" >&2
 	return 1
 fi
 

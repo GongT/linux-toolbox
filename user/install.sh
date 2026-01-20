@@ -31,6 +31,8 @@ VALUES=(
 	TERM_PROGRAM_VERSION
 	# VSCODE_SHELL_INTEGRATION_SHELL_SCRIPT
 	COMPUTERNAME
+	USER_DISPLAYNAME
+	USER_EMAIL
 )
 write_sshd_config 89-linux-toolbox "AcceptEnv ${VALUES[*]}"
 write_ssh_config 89-linux-toolbox "SendEnv ${VALUES[*]}"

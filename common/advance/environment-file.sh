@@ -59,8 +59,11 @@ function environment-file() {
 					echo "removed: $LINE" >&2
 					continue
 				fi
-				echo "change: $LINE" >&2
-				LINE="export $NAME=$(printf %q "$VALUE")"
+				NEW_LINE="export $NAME=$(printf %q "$VALUE")"
+				if [[ $NEW_LINE != "$LINE" ]]; then
+					echo "change: $LINE -> $VALUE" >&2
+					LINE="$NEW_LINE"
+				fi
 				HIT=1
 			fi
 			LINES+=("$LINE")

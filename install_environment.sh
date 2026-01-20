@@ -214,11 +214,56 @@ function install_script() {
 }
 
 ### start
-[ -e "${TARGET}" ] && rm ${TARGET} || true
+[ -e "${TARGET}" ] && rm "${TARGET}" || true
 
 _debug_show_section() {
 	echo -e "\n\e[38;5;14m: $*\e[0m" >&2
 }
+
+_debug_show_section "preparing..."
+if [[ ${USER_DISPLAYNAME+found} == found ]]; then
+	: # is correct
+elif command_exists git && git config --get user.name &>/dev/null; then
+	USER_DISPLAYNAME=$(git config --get user.name || true)
+fi
+
+if [[ -z ${USER_DISPLAYNAME-} ]]; then
+	read -r -p "输入你的显示名称 (Display Name): " USER_DISPLAYNAME
+fi
+export USER_DISPLAYNAME
+
+if is_root; then
+	if [[ -e "${MY_LIBEXEC}/user-mode" ]]; then
+		SINGLEUSER_MODE=$(<"${MY_LIBEXEC}/user-mode")
+	else
+		while true; do
+			read -r -p "当前为root用户，是否以单用户模式安装？(y/n): " RESP
+			case $RESP in
+			[Yy]*)
+				SINGLEUSER_MODE=true
+				break
+				;;
+			[Nn]*)
+				SINGLEUSER_MODE=false
+				break
+				;;
+			esac
+		done
+		printf "$SINGLEUSER_MODE" >"${MY_LIBEXEC}/user-mode"
+	fi
+	if [[ $SINGLEUSER_MODE != "false" ]]; then
+		echo "will installed as single user mode"
+	fi
+else
+	SINGLEUSER_MODE=false
+fi
+export SINGLEUSER_MODE
+is_single_user_mode() {
+	[[ $SINGLEUSER_MODE != "false" ]]
+}
+if ! is_single_user_mode; then
+	emit "export USER_DISPLAYNAME='${USER_DISPLAYNAME}'"
+fi
 
 _debug_show_section "common tools..."
 install_script common
@@ -288,3 +333,17 @@ source "${TARGET}" ||
 	}
 
 echo "ok."
+
+source "./common/advance/environment-file.sh"
+if is_single_user_mode; then
+	envfile-system USER_DISPLAYNAME "$USER_DISPLAYNAME"
+else
+	envfile-user USER_DISPLAYNAME "$USER_DISPLAYNAME"
+fi
+if [[ ${USER_EMAIL+found} == found ]]; then
+	if is_single_user_mode; then
+		envfile-system USER_EMAIL "$USER_EMAIL"
+	else
+		envfile-user USER_EMAIL "$USER_EMAIL"
+	fi
+fi
