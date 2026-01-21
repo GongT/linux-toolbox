@@ -22,4 +22,23 @@ if [[ " $* " == *' commit '* ]]; then
 	fi
 fi
 
+action_large_files() {
+	git rev-list --objects --all |
+		git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' |
+		sed -n 's/^blob //p' |
+		sort --numeric-sort --key=2 |
+		cut -c 1-12,41- |
+		$(command -v gnumfmt || echo numfmt) --field=2 --to=iec-i --suffix=B --padding=7 --round=nearest
+}
+
+if [[ ${1-} == 'large' ]]; then
+	declare -i TAIL=${2-0}
+	if [[ ${TAIL-} -gt 0 ]]; then
+		action_large_files | tail -n "${TAIL}"
+	else
+		action_large_files
+	fi
+	exit 0
+fi
+
 exec "${GIT_BIN}" "${ARGS[@]}"
