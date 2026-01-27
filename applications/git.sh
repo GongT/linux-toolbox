@@ -8,10 +8,17 @@ warp_bin_with_env git bin/git_wrap.sh \
 
 emit_file alias/git.sh
 
+git() {
+	if ! "${GIT_BIN}" "$@"; then
+		printf "\x1B[38;5;14mgit command failed:\x1B[0m git %s\n" "$*" >&2
+		return 1
+	fi
+}
+
 single_configure_user() {
 	local field="$1" value="$2"
-	"${GIT_BIN}" config unset --system --all "$field" &>/dev/null || : # 删除key如果不存在，会返回错误，需要忽略
-	"${GIT_BIN}" config set --global --all "$field" "$value"
+	git config unset --system --all "$field" &>/dev/null || : # 删除key如果不存在，会返回错误，需要忽略
+	git config set --global --all "$field" "$value"
 }
 
 single_configure_system() {
@@ -21,14 +28,14 @@ single_configure_system() {
 		single_configure_user "$field" "$value"
 		return
 	fi
-	"${GIT_BIN}" config unset --global --all "$field" &>/dev/null || : # 删除key如果不存在，会返回错误，需要忽略
-	"${GIT_BIN}" config set --system --all "$field" "$value"
+	git config unset --global --all "$field" &>/dev/null || : # 删除key如果不存在，会返回错误，需要忽略
+	git config set --system --all "$field" "$value"
 }
 
 remove_configure() {
 	local field="$1"
-	"${GIT_BIN}" config unset --system --all "$field" &>/dev/null || :
-	"${GIT_BIN}" config unset --global --all "$field" &>/dev/null || :
+	git config unset --system --all "$field" &>/dev/null || :
+	git config unset --global --all "$field" &>/dev/null || :
 }
 
 single_configure_single_user() {
@@ -41,7 +48,7 @@ single_configure_single_user() {
 }
 
 has_config() {
-	"${GIT_BIN}" config get "$1" &>/dev/null
+	git config get "$1" &>/dev/null
 }
 
 remove_configure user.name

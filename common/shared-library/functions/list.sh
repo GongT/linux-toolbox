@@ -19,6 +19,11 @@ function list() {
 		local TARGET_VAR_VALUE="${!TARGET_VAR:-}"
 	fi
 
+	if [[ "${VALUE}" == *"${SEP}"* ]]; then
+		echo "Value cannot contain separator character '${SEP}': '${VALUE}'" >&2
+		return 1
+	fi
+
 	case "$ACTION" in
 	has)
 		_list_exists "$VALUE"

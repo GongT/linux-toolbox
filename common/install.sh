@@ -17,6 +17,7 @@ emit_file "advance/prompt-command.sh"
 emit "path-var add /usr/local/bin"
 
 emit_file "bash-config/exclude-list-dll.sh"
+emit_file "bash-config/dir-colors.sh"
 emit_file "bash-config/history.sh"
 
 emit_file "advance/machine-name.sh"
@@ -26,6 +27,7 @@ if [[ $(systemd-detect-virt) == 'wsl' ]]; then
 fi
 emit 'path-var normalize
 export PATH
+export EXECIGNORE
 '
 
 if is_root ; then

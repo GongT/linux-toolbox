@@ -166,6 +166,11 @@ execute_outer() {
 		echo "load system environment" >&2
 		source /etc/profile.d/50-environment.sh
 	fi
+	if [[ -e /etc/profile.d/vscode.sh ]]; then
+		echo "load static environment" >&2
+		# shellcheck source=/dev/null
+		source /etc/profile.d/vscode.sh
+	fi
 	if [[ -e "${HOME-}/.bash_environment.sh" ]]; then
 		echo "load user environment" >&2
 		source "${HOME}/.bash_environment.sh"
