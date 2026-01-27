@@ -30,7 +30,8 @@ export PATH
 export EXECIGNORE
 '
 
-if is_root ; then
+if is_root; then
 	mkdir -p /usr/local/libexec/vscode-wrap
 	cp "${HERE}/vscode/vscode-alternative-shell" /usr/local/libexec/vscode-wrap
+	chmod a+x /usr/local/libexec/vscode-wrap/vscode-alternative-shell
 fi

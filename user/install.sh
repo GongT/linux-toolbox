@@ -15,6 +15,24 @@ write_ssh_config() {
 	echo "writting SSH config file $F" >&2
 }
 
+write_sudoers_config() {
+	local NAME=$1
+	local F="/etc/sudoers.d/${NAME}"
+	local LINES=$'# pass env vars to sudo\n'
+
+	LINES+="Defaults env_keep=\"${VALUES[*]}\""
+
+	echo "$LINES" | $SUDO tee "$F" >/dev/null
+	$SUDO chmod 0440 "$F"
+	echo "writting sudoers config file $F" >&2
+
+	if ! visudo -c >/dev/null; then
+		unlink "$F"
+		echo "error in sudoers file!" >&2
+		exit 1
+	fi
+}
+
 emit_file vscode.sh
 emit_file sshd.sh
 
@@ -36,7 +54,7 @@ VALUES=(
 )
 write_sshd_config 89-linux-toolbox "AcceptEnv ${VALUES[*]}"
 write_ssh_config 89-linux-toolbox "SendEnv ${VALUES[*]}"
-
+write_sudoers_config 89-linux-toolbox
 
 # cat <<-EOF > /
 # EOF
