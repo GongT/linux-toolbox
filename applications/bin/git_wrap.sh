@@ -9,9 +9,13 @@ alert_en() {
 	echo -e " ⚠️  \e[38;5;14mMissing USER_DISPLAYNAME and USER_EMAIL environment variables, using system default, please check status.\e[0m" >&2
 }
 
+has_user_and_email() {
+	git config --get user.name >/dev/null 2>&1 && git config --get user.email >/dev/null 2>&1
+}
+
 ARGS=("$@")
 if [[ " $* " == *' commit '* ]]; then
-	if [[ -z ${USER_DISPLAYNAME-} ]] || [[ -z ${USER_EMAIL-} ]]; then
+	if [[ -z ${USER_DISPLAYNAME-} ]] || [[ -z ${USER_EMAIL-} ]] && ! has_user_and_email; then
 		if [[ -z ${DISPLAY-} && -z ${SSH_CONNECTION-} && ${TERM-} == 'linux' ]]; then
 			alert_en
 		else
@@ -23,8 +27,8 @@ if [[ " $* " == *' commit '* ]]; then
 fi
 
 action_large_files() {
-	git rev-list --objects --all |
-		git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' |
+	"${GIT_BIN}" rev-list --objects --all |
+		"${GIT_BIN}" cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' |
 		sed -n 's/^blob //p' |
 		sort --numeric-sort --key=2 |
 		cut -c 1-12,41- |

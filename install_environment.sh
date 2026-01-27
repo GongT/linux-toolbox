@@ -261,9 +261,6 @@ export SINGLEUSER_MODE
 is_single_user_mode() {
 	[[ $SINGLEUSER_MODE != "false" ]]
 }
-if ! is_single_user_mode; then
-	emit "export USER_DISPLAYNAME='${USER_DISPLAYNAME}'"
-fi
 
 _debug_show_section "common tools..."
 install_script common
@@ -284,7 +281,7 @@ install_script bash_source
 
 _debug_show_section "applications..."
 for FILE in "${MY_SCRIPT_ROOT}/applications/"*.sh; do
-	install_script applications $(basename "$FILE" .sh)
+	install_script applications "$(basename "$FILE" .sh)"
 done
 
 _debug_show_section "user apps..."
@@ -325,7 +322,7 @@ if command_exists shfmt; then
 fi
 
 echo -n "complete, try start it - "
-# shellcheck source=01-linux-toolbox.sh
+# shellcheck source=51-linux-toolbox.sh
 source "${TARGET}" ||
 	{
 		unlink "${TARGET}"
