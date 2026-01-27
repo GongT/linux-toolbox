@@ -41,7 +41,8 @@ __check_vscode() {
 		VSCODE_BIN=$(command -v code-insiders || command -v code) 2>/dev/null
 
 		if ! [[ "$VSCODE_BIN" ]]; then
-			echo "missing vscode command in PATH" >&2
+			# TODO: maybe sudo, then should not alert
+			# echo "missing vscode command in PATH" >&2
 			return
 		fi
 	else

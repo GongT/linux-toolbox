@@ -1,12 +1,19 @@
 #!/bin/bash
+# shellcheck disable=SC2139
 
 export TIME_STYLE='+%Y-%m-%d
 %H:%M:%S'
 
-alias l.='ls -d .*'
-alias ll='ls -lhA'
-alias la='ls -hA'
-alias vi='vim'
+if [[ -t 2 ]]; then
+	__COLORARG="--color=auto"
+else
+	__COLORARG=""
+fi
+
+alias l.="ls ${__COLORARG} -d .*"
+alias ll="ls ${__COLORARG} -lhA"
+alias la="ls ${__COLORARG} -hA"
+alias vi="vim"
 
 # Interactive operation...
 alias rm='rm -i'
@@ -20,6 +27,8 @@ alias du='du -h'
 # Misc :)
 alias less='less -r'             # raw control characters
 alias whence='type -a'           # where, of a sort
-alias grep='grep --color'        # show differences in colour
-alias egrep='egrep --color=auto' # show differences in colour
-alias fgrep='fgrep --color=auto' # show differences in colour
+alias grep="grep ${__COLORARG}"   # show differences in colour
+alias egrep="egrep ${__COLORARG}" # show differences in colour
+alias fgrep="fgrep ${__COLORARG}" # show differences in colour
+
+unset __COLORARG
