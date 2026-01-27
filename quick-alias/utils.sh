@@ -1,14 +1,8 @@
 #!/bin/bash
 
-if [[ -t 1 ]]; then
-	function ls() {
-		LC_ALL=zh_CN.UTF-8 command ls --color=auto "$@"
-	}
-else
-	function ls() {
-		LC_ALL=zh_CN.UTF-8 command ls "$@"
-	}
-fi
+export TIME_STYLE='+%Y-%m-%d
+%H:%M:%S'
+
 alias l.='ls -d .*'
 alias ll='ls -lhA'
 alias la='ls -hA'
