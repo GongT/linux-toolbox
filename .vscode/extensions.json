@@ -1,8 +1,9 @@
 {
 	"recommendations": [
-		"timonwong.shellcheck",
 		"mads-hartmann.bash-ide-vscode",
-		"aaron-bond.better-comments"
+		"aaron-bond.better-comments",
+		"rogalmic.bash-debug",
+		"hangxingliu.vscode-systemd-support"
 	],
 	"unwantedRecommendations": []
 }

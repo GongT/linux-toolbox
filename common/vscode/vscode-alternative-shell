@@ -2,39 +2,78 @@
 
 # shellcheck disable=SC2155
 
-set -Eeuo pipefail
-
-log() {
+output() {
 	echo "$*" >&2
 }
+log() {
+	output "[vscode shell] $*"
+}
+die() {
+	log "$*"
+	log "the modified script is at '${TMPF}' on server."
+	exit 123
+}
+append_script() {
+	echo "$*" >>"${TMPF}"
+}
+
+SELF="$(realpath "${BASH_SOURCE[0]}")"
+if [[ $SHELL == "$SELF" ]]; then
+	SHELL="$(command -v bash)"
+fi
 
 if [[ $SHELL != *"bash"* ]]; then
 	# 此脚本需要bash运行，通常就是bash，但有些错误实现的系统会忽略shebang
 	if [[ $# -eq 0 ]]; then
-		SELF="$(realpath "${BASH_SOURCE[0]}")"
 		set -- "${SELF}"
 	fi
 
-	echo "current shell is ${SHELL}, re-execute as bash -$- $*" >&2
+	log "current shell is ${SHELL}, re-execute as bash -$- $*"
 	export SHELL=/usr/bin/bash
 	exec /usr/bin/bash "-$-" "$@"
 fi
 
-execute_inner() {
-	source "${PASS_ENV_FILE}"
-	unlink "${PASS_ENV_FILE}"
-	unset PASS_ENV_FILE
-	# declare -p TMPF RAND PROXY
+set -Eeuo pipefail
+shopt -s inherit_errexit extglob nullglob globstar lastpipe shift_verbose
 
-	# SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+hack_vscode_protocol() {
+	### 标准输入的脚本来自vscode客户端，通过ssh输入过来，原本会直接bash执行
+	while read -r LINE; do
+		if [[ -z ${LINE} ]]; then
+			append_script ""
+			continue
+		elif [[ ${LINE} == *mainScriptWrapper* ]]; then
+			# 看到主函数定义的起始行，开始处理脚本
+			{
+				echo "${LINE}"
+				stdin_scripts_processor
+			} >>"${TMPF}"
 
+			# 处理成功！
+			return 0
+		elif [[ ${LINE} == bash || ${LINE} == sh ]]; then
+			# vscode会首先启动sh，然后向他输出脚本，这里跳过
+			append_script "# [skip   ] ${LINE}"
+			# output "[skip   ] ${LINE}"
+		else
+			# 本应由sh执行的内容
+			# 基本信息，目前观察到这部分只剩下uname一个命令了
+			append_script "# [execute] ${LINE}"
+			# output "[execute] ${LINE}"
+			eval "${LINE}"
+		fi
+	done
+
+	log "unexpected EOF when reading input"
+	exit 123
+}
+
+stdin_scripts_processor() {
 	# {
 	# 	echo =============================================
 	# 	env
 	# 	echo =============================================
 	# } >&2
-
-	echo >"${TMPF}"
 
 	function __replace_re() {
 		# 构造正则匹配，用于在标准输入的代码中替换变量赋值
@@ -49,11 +88,11 @@ execute_inner() {
 	### 替换 wget 命令，输出调试信息，vscode使用wget下载一个很小的cli，较大的服务器程序由此cli下载，不经过wget
 	P_TTY="/proc/$$/fd/2"
 	WGET="$(command -v wget)"
-	echo "wget is: ${WGET} | replaced to write output to ${P_TTY}"
-	cat <<-EOF >>"${TMPF}"
+	log "wget is: ${WGET} | replaced to write output to ${P_TTY}"
+	cat <<-EOF
 		function wget() {
 			local ARGS=("\$@") WGET="${WGET}"
-			echo "wget called with: \${ARGS[*]}" >/dev/tty
+			log "wget called with: \${ARGS[*]}"
 			"${WGET}" "\${ARGS[@]}" 2>&1 | tee "${P_TTY}"
 		}
 	EOF
@@ -68,25 +107,45 @@ execute_inner() {
 	### 替换 sleep 命令
 	# vscode安装脚本首先会下载一个cli，此cli会启动实际的服务器程序
 	# 此时脚本用sleep等待服务器程序启动（下载）；以及其他一些东西，该等待时间为0.x~3秒，这种情况直接调用sleep
-	# 一切准备好后，脚本会进入一个死循环，每次等待180秒，直到断开连接
-	# 但由于用systemd另外启动的server，断开连接还会继续运行，所以需要此时检查ssh连接状态，判断是否停止服务
-	cat <<-'EOF' >>"${TMPF}"
+	# 一切准备好后，脚本会进入一个死循环，每次等待180秒并随便输出，以此判断连接是否断开
+	# 但由于用systemd另外启动的server，断开连接不会导致“随便输出”出错，也就不能判断连接情况
+	# 用判断父进程PID是否还在来实现相同功能
+	# UPDATE:
+	# 经过测试，useLocalServer的时候：
+	#     对于首个连接即使ssh结束也不能退出
+	#     对于其他连接则应该退出
+	# 实际不应该判断父进程，而是子进程（vscode server）是否还在
+	cat <<-'EOF'
 		SLEEP_BIN=$(command -v sleep)
-		builtin echo "replacing sleep $SLEEP_BIN with function" >&2
+		PARENT_NOTIFIED=''
+		log "replacing sleep $SLEEP_BIN with function"
 		sleep() {
 			local T=$1
+			log "sleep ${T}"
 			if [[ $T == *'.'* ]] || [[ $T -lt 30 ]]; then
 				"${SLEEP_BIN}" "$T"
 				return
 			fi
-			# server is (hopefully) stable
+			# wait long, server is (hopefully) stable
+			if [[ ! "${PARENT_NOTIFIED-}" ]]; then
+				if ! [[ "${CLI_PID-}" ]]; then
+					die "protocol changed: missing CLI_PID"
+				fi
 
-			"${SLEEP_BIN}" "$T"
-			if systemctl status "${SYSTEMD_CONTROLLER_SESSION}" --no-legend --no-pager -n0 | grep -q abandoned; then
-				builtin echo "ssh session seems to be abandoned" >&2
+				log "notify systemd ready"
+				PARENT_NOTIFIED=yes
+				systemd-notify --ready
+				unset NOTIFY_SOCKET
+			fi
+
+			# # use timeout+tail to faster disconnect detect, just use sleep is also ok
+			timeout "$T" tail "--pid=$CLI_PID" -f /dev/null &>/dev/null || true
+
+			if ! kill -0 "$CLI_PID" >/dev/null 2>&1; then
+				log "vscode server $CLI_PID is gone"
+
+				# this shell is leader of systemd-run, quit will cleanup everything
 				exit 0
-			else
-				builtin echo "ssh session still exists" >&2
 			fi
 		}
 	EOF
@@ -110,72 +169,40 @@ execute_inner() {
 
 	### 标准输入的脚本来自vscode客户端，通过ssh输入过来，原本会直接bash执行
 	while read -r LINE; do
-		if [[ -z ${LINE} ]]; then
-			# 空行
-			echo '' >>"${TMPF}"
-			continue
-		elif [[ ${LINE} == *mainScriptWrapper* ]]; then
-			# 看到主函数定义的开始，开始处理脚本，此循环不会退出
-			echo "${LINE}" >>"${TMPF}"
-			while read -r LINE; do
-				# 正则替换脚本中的变量赋值，然后记录到临时文件
-				STMT=$(echo "${LINE}" | sed --unbuffered -E "${MODIFY_REG}")
-				echo "${STMT}" >>"${TMPF}"
+		# 正则替换脚本中的变量赋值，然后记录到临时文件
+		STMT=$(echo "${LINE}" | sed --unbuffered -E "${MODIFY_REG}")
+		echo "${STMT}"
 
-				if [[ ${LINE} == *mainScriptWrapper* ]]; then
-					# 看到主函数的实际调用，启动临时文件
-					# 主进程此bash永不退出，不知道小任务运行完是不是会退出（例如kill server on host命令）
-					# 如果也不会的话这里可以用source
-
-					log "CALL BASH TO RUN REPLACED SCRIPT"
-					bash "${TMPF}"
-					RET=$?
-
-					log "[one time script mode] script finished, code ${RET}."
-					exit "${RET}"
-				fi
-			done
-
-			echo "unexpected close input"
-			exit 123
-		elif [[ ${LINE} == bash || ${LINE} == sh ]]; then
-			# [握手] vscode会首先启动sh，然后向他输出脚本，这里跳过
-			echo "### skip start shell: ${LINE}" >>"${TMPF}"
-			# echo $$
-			# echo "this will never run"
-			# exit 123
-		else
-			# [握手] 基本信息，目前观察到这部分只剩下uname一个命令了
-			echo "# + ${LINE}" >>"${TMPF}"
-			eval "${LINE}"
-			# echo "[execue] ${LINE}" >&2
+		if [[ ${LINE} == "mainScriptWrapper" ]]; then
+			# 看到主函数的实际调用！
+			log "main call is detected!"
+			return 0
 		fi
 	done
 
-	echo "unexpected close input"
-	exit 123
+	die "protocol changed: missing main function call"
 }
 
-execute_outer() {
+execute_main() {
 	printf "\e[32mserver hello: starting vscode remote shell\e[0m\n"
 
 	### 加载服务器上的环境变量文件
 	# 目的是读出 VSCODE_AGENT_FOLDER 和 VSCODE_AS_USER
 	# 其他是附带，会传递给子进程
 	if [[ -e /etc/profile.d/50-environment.sh ]]; then
-		echo "load system environment" >&2
+		log "load system environment"
 		source /etc/profile.d/50-environment.sh
 	fi
 	if [[ -e /etc/profile.d/vscode.sh ]]; then
-		echo "load static environment" >&2
+		log "load static environment"
 		# shellcheck source=/dev/null
 		source /etc/profile.d/vscode.sh
 	fi
 	if [[ -e "${HOME-}/.bash_environment.sh" ]]; then
-		echo "load user environment" >&2
+		log "load user environment"
 		source "${HOME}/.bash_environment.sh"
 	else
-		echo "user environment not exists: ${HOME-}/.bash_environment.sh" >&2
+		log "user environment not exists: ${HOME-}/.bash_environment.sh"
 	fi
 
 	### 如果发现没有设置 VSCODE_AGENT_FOLDER，则直接运行 bash，仿佛此文件不存在
@@ -202,75 +229,112 @@ execute_outer() {
 	fi
 	export RAND
 
+	# 用于接收标准输入脚本
+	local -r TMPF="${VSC_TMP}/install-script.${RAND}.sh"
+	log "SCRIPT WILL DUMP TO $TMPF"
+
+	declare -f output die >"$TMPF"
+	cat <<-'PREPARE' >>"$TMPF"
+		log() {
+			output "[vscode shell][child] $*"
+		}
+		log "subshell is started."
+		if [[ -z "$NOTIFY_SOCKET" ]]; then
+			die "missing NOTIFY_SOCKET"
+		fi
+		log "NOTIFY_SOCKET=${NOTIFY_SOCKET}"
+	PREPARE
+
+	# 计算systemd-run参数，附带一些环境变量
+	local SUDO=() SYSTEMD_RUN_ARGS=() MAYBE_USER=() SESSION_MANAGER='system'
+	if [[ $(id -u) -eq 0 ]]; then
+		log "running as root"
+	elif [[ ${VSCODE_AS_USER:-} != yes ]]; then
+		log "running as user, using sudo [VSCODE_AS_USER=${VSCODE_AS_USER:-}]"
+		SUDO=(sudo)
+		declare -x HOME=/root
+		unset DBUS_SESSION_BUS_ADDRESS XDG_SESSION_ID XDG_RUNTIME_DIR
+	else
+		log "running as user, using --user session [VSCODE_AS_USER=${VSCODE_AS_USER:-}]"
+		SESSION_MANAGER="user"
+	fi
+
+	MAYBE_USER+=("--$SESSION_MANAGER")
+
+	# 存放环境变量，交给子进程使用
+	{
+		export -p | grep -viE ' (USER|SHLVL|PWD|OLDPWD|_|MEMORY_PRESSURE_[A-Z_]+|INVOCATION_ID)='
+
+		echo "declare -r SESSION_ROOT_PID=$$"
+
+		if [[ ${#SUDO[@]} -ne 0 ]]; then
+			# 如果涉及sudo，则需要重新加载root用户环境，否则只有登录用户的
+			cat <<-EOF >>"${PASS_ENV_FILE}"
+				if [[ -e "/root/.bash_environment.sh" ]]; then
+					log "load root user environment"
+					source "/root/.bash_environment.sh"
+				else
+					log "root user environment not exists: /root/.bash_environment.sh"
+				fi
+			EOF
+		fi
+
+		echo "##### environment part completed"
+	} >>"${TMPF}"
+
+	# 和vscode交互，等待脚本传输完成
+	hack_vscode_protocol
+
 	# 此文件路径在安装脚本中
 	if [[ ! -e /tmp/vscode-skip-server-requirements-check ]]; then
 		touch /tmp/vscode-skip-server-requirements-check
 	fi
 
-	# 接收标准输入脚本，用于调试
-	export TMPF="${VSC_TMP}/install-script.${RAND}.sh"
-	log "SCRIPT WILL DUMP TO $TMPF"
+	local PASS_STDOUT="${VSC_TMP}/.stdout.${RAND}.fifo"
+	local PASS_STDERR="${VSC_TMP}/.stderr.${RAND}.fifo"
+	mkfifo --mode 0777 "${PASS_STDOUT}" "${PASS_STDERR}"
+	cat "${PASS_STDERR}" >&2 &
+	cat "${PASS_STDOUT}" &
+	# touch "${PASS_STDOUT}" "${PASS_STDERR}"
+	# chmod 0777 "${PASS_STDOUT}" "${PASS_STDERR}"
+	# tail -f "${PASS_STDERR}" >&2 &
+	# tail -f "${PASS_STDOUT}" &
 
-	# 计算systemd-run参数
-	local SUDO=() MAYBEUSER=()
-	if [[ $(id -u) -eq 0 ]]; then
-		log "running as root"
-		MAYBEUSER=(--system)
-	elif [[ ${VSCODE_AS_USER:-} != yes ]]; then
-		log "running as user, using sudo [VSCODE_AS_USER=${VSCODE_AS_USER:-}]"
-		MAYBEUSER=(--system)
-		SUDO=(sudo)
-		declare -x HOME=/root # 用于输出到环境变量文件
-		unset DBUS_SESSION_BUS_ADDRESS XDG_SESSION_ID XDG_RUNTIME_DIR
-	else
-		log "running as user, using --user session [VSCODE_AS_USER=${VSCODE_AS_USER:-}]"
-		MAYBEUSER=(--user)
-	fi
-
-	# 存放环境变量，交给子进程使用
-	export PASS_ENV_FILE="${VSC_TMP}/env.${RAND}.sh"
-	export SYSTEMD_CONTROLLER_SESSION=$(systemctl whoami "$$" || true)
-
-	export -p | grep -viE ' (USER|SHLVL|PWD|OLDPWD|_|MEMORY_PRESSURE_[A-Z_]+|INVOCATION_ID)=' | cat >"${PASS_ENV_FILE}"
-
-	# 随便输出内容可能导致vscode异常，非调试不能输出
-	# {
-	# 	echo =============================================
-	# 	cat "${PASS_ENV_FILE}"
-	# 	echo =============================================
-	# } >&2
-
-	if [[ ${#SUDO[@]} -ne 0 ]]; then
-		# 如果涉及sudo，则需要重新加载root用户环境，否则只有登录用户的
-		cat <<-EOF >>"${PASS_ENV_FILE}"
-			if [[ -e "/root/.bash_environment.sh" ]]; then
-				echo "load root user environment" >&2
-				source "/root/.bash_environment.sh"
-			else
-				echo "root user environment not exists: /root/.bash_environment.sh" >&2
-			fi
-		EOF
-	fi
-
-	local SELF="$(realpath "${BASH_SOURCE[0]}")"
-	exec "${SUDO[@]}" systemd-run "${MAYBEUSER[@]}" "--slice=vscode.slice" \
+	local SERVICE_NAME="vscode-remote-$RAND.service"
+	log "service: ${SERVICE_NAME}"
+	exec "${SUDO[@]}" systemd-run \
+		"${MAYBE_USER[@]}" \
 		--send-sighup \
 		--collect \
-		"--working-directory=$VSC_TMP" --pipe --wait \
-		"--setenv=PASS_ENV_FILE=${PASS_ENV_FILE}" \
-		"--service-type=exec" \
-		"--unit=vscode-remote-$RAND.service" \
+		"--slice=vscode.slice" \
+		"--working-directory=$VSC_TMP" \
+		"--service-type=notify" \
+		"--property=NotifyAccess=all" \
+		"--unit=${SERVICE_NAME}" \
 		"--property=Description=Visual Studio Code Remote @ $RAND" \
+		"${SYSTEMD_RUN_ARGS[@]}" \
+		"--property=StandardInput=file:${TMPF}" \
+		"--property=StandardOutput=append:${PASS_STDOUT}" \
+		"--property=StandardError=append:${PASS_STDERR}" \
 		"--property=OOMPolicy=stop" \
 		"--property=OOMScoreAdjust=200" \
 		"--property=Nice=15" \
 		"--property=LimitNICE=10" \
-		/usr/bin/bash --norc --noprofile "$SELF"
+		/usr/bin/bash --norc --noprofile
+
+	# while ! "${SUDO[@]}" systemctl "${MAYBE_USER[@]}" is-active "$SERVICE_NAME" >/dev/null 2>&1; do
+	# 	log "service: still waitting"
+	# 	sleep 2
+	# done
+
+	# # keep alive 由于无法得知当前ssh连接是否配置了keep-alive，只能无条件判断标准输出是否通畅
+	# log "start idle loop"
+	# sleep 5
+	# while true; do
+	# 	sleep 30
+	# 	log "ssh connection alive"
+	# done
 }
 
-if [[ -e ${PASS_ENV_FILE:-} ]]; then
-	execute_inner "${@}"
-else
-	execute_outer "${@}"
-fi
-unset -f execute_outer execute_inner
+execute_main "${@}"
+unset -f execute_main hack_vscode_protocol stdin_scripts_processor log die append_script

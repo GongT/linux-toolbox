@@ -38,7 +38,9 @@ function set-machine-name() {
 function ___calc_REMOTE_PATH() {
 	local M="${MACHINE_NAME-$(hostname)}"
 	if [[ ${REMOTE_PATH+found} == 'found' ]]; then
-		REMOTE_PATH+=":$M"
+		if [[ ${REMOTE_PATH} != *":$M" ]]; then
+			REMOTE_PATH+=":$M"
+		fi
 	else
 		export REMOTE_PATH="$M"
 	fi
