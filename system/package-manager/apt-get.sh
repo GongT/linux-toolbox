@@ -10,5 +10,6 @@ export SYSTEM_PACKAGE_MANAGER=apt
 
 emit_alias_sudo "apt"
 emit_alias_sudo "apt-get"
+emit_alias_sudo "apt-file"
 emit_alias_sudo "apt-cache"
 emit_alias_sudo "dpkg"
