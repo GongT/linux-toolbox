@@ -1,14 +1,19 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 set -Eeuo pipefail
 shopt -s inherit_errexit extglob nullglob globstar lastpipe shift_verbose
 
+_SUDO=()
+if [[ $UID -ne 0 ]]; then
+	_SUDO+=(sudo)
+fi
+
 function _dnf() {
-	echo -e "\e[2m$ ${_SUDO[*]}${DNF} $*\e[0m" >&2
+	printf "\e[2m$ %s %s\e[0m\n" "${_SUDO[*]} ${DNF}" "$*" >&2
 	exec "${_SUDO[@]}" "${DNF}" "$@"
 }
 
 if [[ $* == *"--complete"* ]]; then
-	exec "${DNF}" "$@"
+	exec "${_SUDO[@]}" "${DNF}" "$@"
 fi
 
 function parse_provide_file_arg() {

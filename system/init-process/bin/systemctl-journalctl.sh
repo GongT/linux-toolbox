@@ -5,7 +5,7 @@ systemctl() {
 	if [[ $UID -eq 0 ]]; then
 		"$_systemctl" "$@"
 	elif [[ $* == *"--system"* ]]; then
-		$SUDO "$_systemctl" "$@"
+		sudo "$_systemctl" "$@"
 	elif [[ $* == *"--user"* ]]; then
 		"$_systemctl" "$@"
 	else
@@ -16,7 +16,7 @@ journalctl() {
 	if [[ $UID -eq 0 ]]; then
 		"$_journalctl" "$@"
 	elif [[ $* == *"--system"* ]]; then
-		$SUDO "$_journalctl" "$@"
+		sudo "$_journalctl" "$@"
 	elif [[ $* == *"--user"* ]]; then
 		"$_journalctl" "$@"
 	else

@@ -25,12 +25,6 @@ if [[ -e /etc/profile.d/00-environment.sh ]]; then
 	mv /etc/profile.d/00-environment.sh /etc/profile.d/50-environment.sh
 fi
 
-if is_root; then
-	declare -xr SUDO=""
-else
-	declare -xr SUDO="sudo"
-fi
-
 function _my_call() {
 	local B=$1 PATH="${MY_SCRIPT_ROOT}/bin:${PATH}"
 	shift

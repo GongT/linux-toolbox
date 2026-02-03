@@ -7,7 +7,7 @@ if is_root; then
 else
 	_SUDO=(sudo --preserve-env)
 fi
-declare -ar _SUDO
+export _SUDO
 
 function _is_file_writable() {
 	local FILE=$1
