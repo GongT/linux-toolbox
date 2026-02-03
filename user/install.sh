@@ -4,15 +4,15 @@ mkdir -p /etc/ssh/sshd_config.d
 write_sshd_config() {
 	local NAME=$1 LINE=$2
 	local F="/etc/ssh/sshd_config.d/${NAME}.conf"
-	echo "$LINE" | sudo tee "$F" >/dev/null
-	echo "writting SSHD config file $F" >&2
+	write_file_if_changed "$F" "$LINE"
+	debug "write sshd server config - ${LAST_FILE_CHANGED}"
 }
 
 write_ssh_config() {
 	local NAME=$1 LINE=$2
 	local F="/etc/ssh/ssh_config.d/${NAME}.conf"
-	echo "$LINE" | sudo tee "$F" >/dev/null
-	echo "writting SSH config file $F" >&2
+	write_file_if_changed "$F" "$LINE"
+	debug "write system ssh client config - ${LAST_FILE_CHANGED}"
 }
 
 write_sudoers_config() {
@@ -22,14 +22,13 @@ write_sudoers_config() {
 
 	LINES+="Defaults env_keep=\"${VALUES[*]}\""
 
-	echo "$LINES" | sudo tee "$F" >/dev/null
+	write_file_if_changed "$F" "$LINES"
+	debug "update sudoers file - ${LAST_FILE_CHANGED}"
 	sudo chmod 0440 "$F"
-	echo "writting sudoers config file $F" >&2
 
 	if ! visudo -c >/dev/null; then
 		unlink "$F"
-		echo "error in sudoers file!" >&2
-		exit 1
+		die "error in sudoers file!"
 	fi
 }
 

@@ -2,6 +2,7 @@
 
 emit_file "functions/basic.sh"
 emit_file "functions/append-file.sh"
+emit_file "functions/write-file.sh"
 
 emit_file "functions/list.sh"
 emit_file "functions/path-var.sh"

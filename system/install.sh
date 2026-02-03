@@ -15,28 +15,26 @@ else
 fi
 
 function require_command_in_package() {
-	COMMAND=$1
-	PACKAGE_NAME=$2
+	local COMMAND=$1
+	local PACKAGE_NAME=$2
+	local STANDARD_PATHS=("/usr/bin" "/usr/local/bin" "/bin")
 
-	echo -n "command $1: "
-	if [[ -e "/usr/bin/${COMMAND}" ]]; then
-		echo "exists"
-		return 0
-	elif [[ -e "/usr/local/bin/${COMMAND}" ]]; then
-		echo "exists"
-		return 0
-	elif [[ -e "/bin/${COMMAND}" ]]; then
-		echo "exists"
-		return 0
-	elif [[ -n "${PACKAGE_NAME}" ]]; then
-		echo "not exists"
-		echo "RUN:   ${SYSTEM_PACKAGE_MANAGER} ${SYSTEM_PM_INSTALL_SUBCOMMAND} ${PACKAGE_NAME} ..."
-		${SYSTEM_PACKAGE_MANAGER} ${SYSTEM_PM_INSTALL_SUBCOMMAND} "${PACKAGE_NAME}" ||
-			die "\e[0mcan't install command: ${COMMAND}"
+	local PREFIX
+
+	for PREFIX in "${STANDARD_PATHS[@]}"; do
+		if [[ -e "${PREFIX}/${COMMAND}" ]]; then
+			debug "command $COMMAND: exists"
+			return 0
+		fi
+	done
+
+	if [[ -n "${PACKAGE_NAME}" ]]; then
+		warning "command '$COMMAND' not found, try install..."
+		"${SYSTEM_PACKAGE_MANAGER}" "${SYSTEM_PM_INSTALL_SUBCOMMAND}" "${PACKAGE_NAME}" ||
+			die "can't install package '${PACKAGE_NAME}'"
 		require_command_in_package "${COMMAND}"
 	else
-		echo -e "\e[38;5;9mfailed\e[0m"
-		die "fail to install command: ${COMMAND}"
+		die "missing required command '${COMMAND}' you must install it manually."
 	fi
 }
 
@@ -56,16 +54,12 @@ require_command_in_package vim vim
 
 unset require_command_in_package SYSTEM_PM_INSTALL_SUBCOMMAND
 
-if [ -e /usr/lib/upstart ]; then
-	install_script init-process upstart
-elif command_exists systemctl >/dev/null; then
+if command_exists systemctl >/dev/null; then
 	install_script init-process systemd
-elif [ -e /usr/sbin/chkconfig ] >/dev/null; then
-	install_script init-process rhel-sysv
 elif [ -e /bin/cygpath.exe ]; then
 	echo "skip init helpers on cygwin"
 else
-	die "\nonly support upstart | systemd | rhel-sysv."
+	die "\nonly support systemd."
 fi
 
 if grep -q -i 'microsoft' /proc/version; then

@@ -4,7 +4,7 @@ if ! command_exists go; then
 	return
 fi
 
-warp_bin_with_env go bin/golang.bin.sh \
+copy_bin bin/golang.bin.sh go \
 	"GOLANG=$(find_command go)"
 
 emit_stdin <<'EOF'

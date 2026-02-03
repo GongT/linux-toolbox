@@ -44,4 +44,4 @@ function install_microsoft() {
 			"--save-filename=microsoft-${ID}.repo"
 	done
 }
-install_microsoft
+# install_microsoft #TODO

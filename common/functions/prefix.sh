@@ -9,12 +9,10 @@ case "$0" in
 	;;
 esac
 
-if [[ ${_INSTALL_LEVEL_+found} != "found" ]]; then
-	if [[ ${LINUX_TOOLBOX_INITED:-no} == "yes" ]]; then
-		return
-	else
-		declare -r LINUX_TOOLBOX_INITED=yes
-	fi
+if [[ ${LINUX_TOOLBOX_INITED:-no} == "yes" ]]; then
+	return
+else
+	declare -r LINUX_TOOLBOX_INITED=yes
 fi
 
 if [[ -e ~/.bash_environment.sh ]]; then

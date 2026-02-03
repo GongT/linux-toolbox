@@ -1,0 +1,12 @@
+[Unit]
+Description=Run script before network disconnects during shutdown
+DefaultDependencies=no
+Before=network.target shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash __SCRIPT__
+RemainAfterExit=true
+
+[Install]
+WantedBy=halt.target

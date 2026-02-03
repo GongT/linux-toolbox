@@ -1,21 +1,21 @@
 #!/bin/bash
 
 if command_exists podman; then
-	echo "podman exists"
+	debug "podman exists"
 	PODMAN=$(find_command podman)
-	warp_bin_with_env podman bin/podman_wrap.sh \
+	copy_bin bin/podman_wrap.sh podman \
 		"PODMAN=$PODMAN"
 else
-	echo "podman not found"
+	debug "podman not found"
 fi
 
 cru d "podman-cleanup" "podman-auto-pull"
 
 if command_exists buildah; then
-	echo "buildah exists"
+	debug "buildah exists"
 	BUILDAH=$(find_command buildah)
-	warp_bin_with_env buildah bin/buildah_wrap.sh \
+	copy_bin bin/buildah_wrap.sh buildah \
 		"BUILDAH=$BUILDAH"
 else
-	echo "buildah not found"
+	debug "buildah not found"
 fi

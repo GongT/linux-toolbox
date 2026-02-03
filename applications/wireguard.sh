@@ -3,5 +3,5 @@ if ! command_exists wg; then
 fi
 
 WG=$(find_command wg)
-warp_bin_with_env wg bin/wg_wrap.sh \
+copy_bin bin/wg_wrap.sh wg \
 	"WG=${WG}"

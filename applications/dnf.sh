@@ -7,7 +7,7 @@ if ! command_exists dnf; then
 fi
 
 DNF=$(find_command dnf)
-warp_bin_with_env dnf bin/fedora_dnf_wrap.sh \
+copy_bin bin/fedora_dnf_wrap.sh dnf \
 	"DNF=${DNF}"
 
 copy_bin bin/mdnf

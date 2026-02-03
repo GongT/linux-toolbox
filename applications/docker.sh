@@ -2,6 +2,6 @@
 
 if command_exists docker; then
 	DOCKER=$(find_command docker)
-	warp_bin_with_env docker bin/docker_wrap.sh \
+	copy_bin bin/docker_wrap.sh docker \
 		"DOCKER=$DOCKER"
 fi

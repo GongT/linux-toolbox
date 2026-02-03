@@ -3,7 +3,7 @@ if ! command_exists git; then
 fi
 
 GIT_BIN=$(find_command git)
-warp_bin_with_env git bin/git_wrap.sh \
+copy_bin bin/git_wrap.sh git \
 	"GIT_BIN=${GIT_BIN}"
 
 emit_file alias/git.sh
