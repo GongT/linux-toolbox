@@ -21,7 +21,7 @@ function die_usage() {
 }
 function save() {
 	set +e
-	echo "${CONTENT}" | crontab -u "${USER}" -
+	echo "${CONTENT}" | "${CRONTAB[@]}" -
 	RET=$?
 	if [[ $RET -eq 0 ]]; then
 		echo "cru: installed new crontab" >&2
@@ -50,7 +50,7 @@ ${COMMENT}${VAL} #! ${KEY} !#"
 	echo "cru: adding [${KEY}]" >&2
 }
 function init() {
-	CONTENT=$(crontab -u "${USER}" -l 2>/dev/null || :)
+	CONTENT=$("${CRONTAB[@]}" -l 2>/dev/null || :)
 	if [[ -z ${CONTENT} ]]; then
 		CONTENT="# job definition:
 # .---------------- minute (0 - 59)
@@ -69,7 +69,7 @@ if [[ $# -eq 0 ]]; then
 	exit
 fi
 
-USER=$(id -nu)
+CRONTAB=(crontab)
 OP=${1:-''}
 shift
 
@@ -77,6 +77,7 @@ while getopts "u:" opt; do
 	case "$opt" in
 	u)
 		USER="$OPTARG"
+		CRONTAB=(sudo crontab -u "$USER")
 		shift
 		shift
 		;;
@@ -111,7 +112,7 @@ d)
 	save
 	;;
 l)
-	crontab -u "${USER}" -l
+	"${CRONTAB[@]}" -l
 	;;
 *)
 	die_usage "Invalid arguments: $OP $*"

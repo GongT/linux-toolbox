@@ -53,13 +53,16 @@ __check_vscode() {
 
 	if [[ $(basename "$VSCODE_BIN") == 'code-insiders' ]]; then
 		local PARENT=$(dirname "$VSCODE_BIN")
+		# if [[ "$PARENT" == /bin ]] || [[ "$PARENT" == /usr/bin ]] || [[ "$PARENT" == /usr/local/bin ]]; then
+		# 	return
+		# fi
 		local LINK="$PARENT/code"
 
 		if [[ -L $LINK ]]; then
 			if [[ $(readlink "$LINK") == "./code-insiders" ]]; then
 				return
 			else
-				unlink "$LINK"
+				"${_SUDO[@]}" unlink "$LINK"
 			fi
 		elif [[ -e $LINK ]]; then
 			echo "$LINK is not linked to code-insiders" >&2
@@ -67,7 +70,7 @@ __check_vscode() {
 		fi
 
 		echo "create $LINK link to code-insiders" >&2
-		ln -s "./code-insiders" "$LINK"
+		"${_SUDO[@]}" ln -s "./code-insiders" "$LINK"
 	fi
 }
 __check_vscode

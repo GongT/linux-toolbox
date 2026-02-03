@@ -17,6 +17,8 @@ function environment-file() {
 		return 1
 	fi
 
+	# echo "Using file $FILE" >&2
+
 	local LINE LINES=()
 	local HIT=0
 	if [[ $2 == "--unset" ]]; then
@@ -36,11 +38,13 @@ function environment-file() {
 			return
 		fi
 
-		printf '%s\n' "${LINES[@]}" >"$FILE"
+		write_file_if_changed "$FILE" "$(printf '%s\n' "${LINES[@]}")"
 	elif [[ $# -eq 2 ]]; then
 		# print value
 		local -r NAME="$2"
+
 		while IFS= read -r LINE; do
+			echo "??? $LINE" >&2
 			if [[ $LINE == "export $NAME="* || $LINE == "$NAME="* ]]; then
 				echo "$LINE"
 				HIT=1
@@ -74,7 +78,7 @@ function environment-file() {
 			LINES+=("export $NAME=$(printf %q "$VALUE")")
 		fi
 
-		printf '%s\n' "${LINES[@]}" >"$FILE"
+		write_file_if_changed "$FILE" "$(printf '%s\n' "${LINES[@]}")"
 	fi
 }
 

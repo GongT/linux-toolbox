@@ -3,9 +3,13 @@ set -Eeuo pipefail
 shopt -s inherit_errexit extglob nullglob globstar lastpipe shift_verbose
 
 function _dnf() {
-	echo -e "\e[2m$ $SUDO${DNF} $*\e[0m" >&2
-	${SUDO} "${DNF}" "$@"
+	echo -e "\e[2m$ ${_SUDO[*]}${DNF} $*\e[0m" >&2
+	exec "${_SUDO[@]}" "${DNF}" "$@"
 }
+
+if [[ $* == *"--complete"* ]]; then
+	exec "${DNF}" "$@"
+fi
 
 function parse_provide_file_arg() {
 	function arg() {
