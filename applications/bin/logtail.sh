@@ -27,4 +27,4 @@ x() {
 	"$@"
 }
 
-x journalctl -o cat -n 3 -f "${ARGS[@]}"
+x journalctl '--namespace=*' -o cat -n 3 -f "${ARGS[@]}"
