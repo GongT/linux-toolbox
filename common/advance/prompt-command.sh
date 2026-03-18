@@ -12,7 +12,10 @@ function _run-prompt-commands() {
 		done
 		echo -n " :: "
 	fi
-	echo -n "${_REMOTE_PATH_IN_TITLE} - $(pwd)"
+
+	if [[ ${TERM_PROGRAM-} != "vscode" ]]; then
+		echo -n "${_REMOTE_PATH_IN_TITLE} - $(pwd)"
+	fi
 	echo -ne '\007'
 }
 
