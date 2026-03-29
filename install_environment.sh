@@ -22,8 +22,17 @@ else
 	MY_LIBEXEC="$HOME/.local/lib/linux-toolbox"
 	declare -r INSTALL_TARGET_FILE="${MY_LIBEXEC}/.BASHPROFILE"
 
+
+	if [[ " $* " == *' --isolate '* ]]; then
+		ENTRY_CODE='if [[ -n "${USERNAME-}" ]] ; then'
+		ENTRY_CODE+="  source '$INSTALL_TARGET_FILE'"
+		ENTRY_CODE+="fi"
+	else
+		ENTRY_CODE="source '$INSTALL_TARGET_FILE'"
+	fi
+
 	ENTRY_FILE="$HOME/.bashrc"
-	my_call file-section "$ENTRY_FILE" "MY LINUX TOOLBOX" "source '$INSTALL_TARGET_FILE'"
+	my_call file-section "$ENTRY_FILE" "MY LINUX TOOLBOX" "$ENTRY_CODE"
 	declare -xr INSTALL_TYPE='user'
 	success " 🐧🐧🐧🐧 linux-toolbox @ ${INSTALL_TYPE}"
 fi

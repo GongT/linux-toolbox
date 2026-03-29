@@ -15,10 +15,30 @@ git() {
 	fi
 }
 
+if git config --system get http.proxy 2>&1 | grep -q 'key does not contain a section: get'; then
+	git_config_set() {
+		local location="$1" field="$2" value="$3"
+		git config "$location" --replace-all "$field" "$value"
+	}
+	git_config_unset() {
+		local location="$1" field="$2" value="$3"
+		git config "$location" --unset-all "$field" "$value"
+	}
+else
+	git_config_set() {
+		local location="$1" field="$2" value="$3"
+		git config "$location" set --all "$field" "$value"
+	}
+	git_config_unset() {
+		local location="$1" field="$2" value="$3"
+		git config "$location" unset --all "$field" "$value"
+	}
+fi
+
 single_configure_user() {
 	local field="$1" value="$2"
-	git config unset --system --all "$field" &>/dev/null || : # 删除key如果不存在，会返回错误，需要忽略
-	git config set --global --all "$field" "$value"
+	git_config_unset --system "$field" &>/dev/null || : # 删除key如果不存在，会返回错误，需要忽略
+	git_config_set --global "$field" "$value"
 }
 
 single_configure_system() {
@@ -28,14 +48,14 @@ single_configure_system() {
 		single_configure_user "$field" "$value"
 		return
 	fi
-	git config unset --global --all "$field" &>/dev/null || : # 删除key如果不存在，会返回错误，需要忽略
-	git config set --system --all "$field" "$value"
+	git_config_unset --global "$field" &>/dev/null || : # 删除key如果不存在，会返回错误，需要忽略
+	git_config_set --system "$field" "$value"
 }
 
 remove_configure() {
 	local field="$1"
-	git config unset --system --all "$field" &>/dev/null || :
-	git config unset --global --all "$field" &>/dev/null || :
+	git_config_unset --system "$field" &>/dev/null || :
+	git_config_unset --global "$field" &>/dev/null || :
 }
 
 single_configure_single_user() {
