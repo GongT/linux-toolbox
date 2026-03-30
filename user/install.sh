@@ -32,8 +32,8 @@ write_sudoers_config() {
 	fi
 }
 
-emit_file vscode.sh
 emit_file sshd.sh
+emit_file vscode.sh
 
 source sshd.sh
 VALUES=(
@@ -50,6 +50,7 @@ VALUES=(
 	COMPUTERNAME
 	USER_DISPLAYNAME
 	USER_EMAIL
+	VSCODE_ALTERNATIVE
 )
 write_sshd_config 89-linux-toolbox "AcceptEnv ${VALUES[*]}"
 write_ssh_config 89-linux-toolbox "SendEnv ${VALUES[*]}"

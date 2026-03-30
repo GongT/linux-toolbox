@@ -52,9 +52,6 @@ if [[ -f ~/.bash_aliases ]]; then
 	. ~/.bash_aliases
 fi
 
-# export CLIENT_USERNAME="${USER_DISPLAYNAME:-${USERNAME}}"
-# unset USERNAME
-
 if [[ -z ${BASH_COMPLETION_VERSINFO} ]]; then
 	# fix some systems not having bash-completion loaded in /etc/bash.bashrc
 	if ! shopt -oq posix; then

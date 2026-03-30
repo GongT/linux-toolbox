@@ -83,6 +83,7 @@ stdin_scripts_processor() {
 
 	MODIFY_REG=''
 	MODIFY_REG+="$(__replace_re VSCODE_AGENT_FOLDER);"
+	MODIFY_REG+="$(__replace_re SERVER_DIR "${VSCODE_AGENT_FOLDER}");"
 	MODIFY_REG+="$(__replace_re VSC_TMP);"
 
 	### 替换 wget 命令，输出调试信息，vscode使用wget下载一个很小的cli，较大的服务器程序由此cli下载，不经过wget
@@ -211,6 +212,12 @@ execute_main() {
 		exec /usr/bin/bash "$@"
 	fi
 	export VSCODE_AGENT_FOLDER
+	if [[ -n "${VSCODE_ALTERNATIVE-}" ]]; then
+		log "VSCODE_ALTERNATIVE is '${VSCODE_ALTERNATIVE}'"
+		VSCODE_AGENT_FOLDER+="/Alternatives/${VSCODE_ALTERNATIVE}"
+	else
+		log "VSCODE_ALTERNATIVE is not set, using default"
+	fi
 	log "force vscode install to ${VSCODE_AGENT_FOLDER}"
 
 	### 准备运行临时目录

@@ -13,14 +13,20 @@ if [[ ! ${DISPLAY:-} ]]; then
 	fi
 fi
 
-if [[ ${USER_DISPLAYNAME-} ]]; then
-	if ! echo "$USER_DISPLAYNAME" | iconv -f UTF-8 &>/dev/null ; then
-		USER_DISPLAYNAME=$(echo "$USER_DISPLAYNAME" | iconv -f GB18030 -t UTF-8)
-
-		if [[ -t 2 ]]; then
-			printf "\e[38;5;11m%s\e[0m\n" "warning: USER_DISPLAYNAME is not valid UTF-8, assuming it uses GB18030: '$USER_DISPLAYNAME'" >&2
-		fi
+function __support_base64() {
+	local VAR_NAME=$1
+	if [[ ${!VAR_NAME+found} != "found" ]]; then
+		return
 	fi
 
-	export USER_DISPLAYNAME
-fi
+	local RAW_VALUE=${!VAR_NAME}
+
+	if echo "$RAW_VALUE" | base64 -d &>/dev/null; then
+		export "$VAR_NAME=$(echo "$RAW_VALUE" | base64 -d)"
+	fi
+}
+
+__support_base64 USER_DISPLAYNAME
+__support_base64 COMPUTERNAME
+
+unset __support_base64
