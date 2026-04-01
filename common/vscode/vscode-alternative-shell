@@ -309,7 +309,11 @@ execute_main() {
 
 	local SERVICE_NAME="vscode-remote-$RAND.service"
 	log "service: ${SERVICE_NAME}"
-	exec "${SUDO[@]}" systemd-run \
+	x() {
+		echo "+ $*">&2
+		"$@"
+	}
+	x exec "${SUDO[@]}" systemd-run \
 		"${MAYBE_USER[@]}" \
 		--send-sighup \
 		--collect \

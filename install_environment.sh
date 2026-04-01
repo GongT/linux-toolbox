@@ -14,28 +14,29 @@ function pad() {
 }
 
 if [[ " $* " != *' --user '* ]] && is_root; then
-	declare -r INSTALL_TARGET_FILE=/etc/profile.d/51-linux-toolbox.sh
 	MY_LIBEXEC=/usr/local/libexec/linux-toolbox
+	declare -r INSTALL_TARGET_FILE="${MY_LIBEXEC}/.BASHPROFILE"
+	ENTRY_FILE=/etc/profile.d/51-linux-toolbox.sh
+	unlink "${ENTRY_FILE}"
 	declare -xr INSTALL_TYPE='system'
 	error " 🐧🐧🐧🐧 linux-toolbox @ ${INSTALL_TYPE}"
 else
 	MY_LIBEXEC="$HOME/.local/lib/linux-toolbox"
 	declare -r INSTALL_TARGET_FILE="${MY_LIBEXEC}/.BASHPROFILE"
-
-
-	if [[ " $* " == *' --isolate '* ]]; then
-		ENTRY_CODE=$'if [[ -n "${USERNAME-}" ]] ; then\n'
-		ENTRY_CODE+="  source '$INSTALL_TARGET_FILE'"
-		ENTRY_CODE+=$'\nfi'
-	else
-		ENTRY_CODE="source '$INSTALL_TARGET_FILE'"
-	fi
-
 	ENTRY_FILE="$HOME/.bashrc"
-	my_call file-section "$ENTRY_FILE" "MY LINUX TOOLBOX" "$ENTRY_CODE"
 	declare -xr INSTALL_TYPE='user'
 	success " 🐧🐧🐧🐧 linux-toolbox @ ${INSTALL_TYPE}"
 fi
+
+if [[ " $* " == *' --isolate '* ]]; then
+	ENTRY_CODE=$'if [[ -n "${USERNAME-}" ]] ; then\n'
+	ENTRY_CODE+="  source '$INSTALL_TARGET_FILE'"
+	ENTRY_CODE+=$'\nfi'
+else
+	ENTRY_CODE="source '$INSTALL_TARGET_FILE'"
+fi
+my_call file-section "$ENTRY_FILE" "MY LINUX TOOLBOX" "$ENTRY_CODE"
+
 export GEN_BIN_PATH="${MY_LIBEXEC}/bin"
 export GEN_HELPERS_PATH="${MY_LIBEXEC}/helpers"
 

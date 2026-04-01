@@ -6,9 +6,26 @@ GIT_BIN=$(find_command git)
 copy_bin bin/git_wrap.sh git \
 	"GIT_BIN=${GIT_BIN}"
 
+GIT_VERSION=$(git --version | grep -oE '[0-9\.]+')
+
+function version_gt() {
+	test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"
+}
+
+info "using git: $GIT_BIN @ $GIT_VERSION"
+
 emit_file alias/git.sh
 
-if ("${GIT_BIN}" config get http.proxy 2>&1 || true) | grep --color=always 'key does not contain a section: get'; then
+git_config_set() {
+	local location="$1" field="$2" value="$3"
+	git config "$location" set --all "$field" "$value"
+}
+git_config_unset() {
+	local location="$1" field="$2"
+	git config "$location" unset --all "$field"
+}
+
+if version_gt 2.45.0 "$GIT_VERSION" ; then
 	warning "git version is old"
 	git_config_set() {
 		local location="$1" field="$2" value="$3"
@@ -20,14 +37,6 @@ if ("${GIT_BIN}" config get http.proxy 2>&1 || true) | grep --color=always 'key 
 	}
 else
 	debug "using new git"
-	git_config_set() {
-		local location="$1" field="$2" value="$3"
-		git config "$location" set --all "$field" "$value"
-	}
-	git_config_unset() {
-		local location="$1" field="$2"
-		git config "$location" unset --all "$field"
-	}
 fi
 
 git() {
