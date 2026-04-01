@@ -54,8 +54,9 @@ VALUES=(
 )
 write_sshd_config 89-linux-toolbox "AcceptEnv ${VALUES[*]}"
 write_ssh_config 89-linux-toolbox "SendEnv ${VALUES[*]}"
-write_sudoers_config 89-linux-toolbox
-
+if is_root; then
+	write_sudoers_config 89-linux-toolbox
+fi
 # cat <<-EOF > /
 # EOF
 # socat -v UNIX-LISTEN:/tmp/x.sock,mode=0777 UNIX-CO

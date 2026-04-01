@@ -24,9 +24,9 @@ else
 
 
 	if [[ " $* " == *' --isolate '* ]]; then
-		ENTRY_CODE='if [[ -n "${USERNAME-}" ]] ; then'
+		ENTRY_CODE=$'if [[ -n "${USERNAME-}" ]] ; then\n'
 		ENTRY_CODE+="  source '$INSTALL_TARGET_FILE'"
-		ENTRY_CODE+="fi"
+		ENTRY_CODE+=$'\nfi'
 	else
 		ENTRY_CODE="source '$INSTALL_TARGET_FILE'"
 	fi

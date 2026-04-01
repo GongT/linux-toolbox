@@ -8,32 +8,34 @@ copy_bin bin/git_wrap.sh git \
 
 emit_file alias/git.sh
 
+if ("${GIT_BIN}" config get http.proxy 2>&1 || true) | grep --color=always 'key does not contain a section: get'; then
+	warning "git version is old"
+	git_config_set() {
+		local location="$1" field="$2" value="$3"
+		git config "$location" --replace-all "$field" "$value"
+	}
+	git_config_unset() {
+		local location="$1" field="$2"
+		git config "$location" --unset-all "$field"
+	}
+else
+	debug "using new git"
+	git_config_set() {
+		local location="$1" field="$2" value="$3"
+		git config "$location" set --all "$field" "$value"
+	}
+	git_config_unset() {
+		local location="$1" field="$2"
+		git config "$location" unset --all "$field"
+	}
+fi
+
 git() {
 	if ! "${GIT_BIN}" "$@"; then
 		printf "\x1B[38;5;14mgit command failed:\x1B[0m git %s\n" "$*" >&2
 		return 1
 	fi
 }
-
-if git config --system get http.proxy 2>&1 | grep -q 'key does not contain a section: get'; then
-	git_config_set() {
-		local location="$1" field="$2" value="$3"
-		git config "$location" --replace-all "$field" "$value"
-	}
-	git_config_unset() {
-		local location="$1" field="$2" value="$3"
-		git config "$location" --unset-all "$field" "$value"
-	}
-else
-	git_config_set() {
-		local location="$1" field="$2" value="$3"
-		git config "$location" set --all "$field" "$value"
-	}
-	git_config_unset() {
-		local location="$1" field="$2" value="$3"
-		git config "$location" unset --all "$field" "$value"
-	}
-fi
 
 single_configure_user() {
 	local field="$1" value="$2"
@@ -68,7 +70,7 @@ single_configure_single_user() {
 }
 
 has_config() {
-	git config get "$1" &>/dev/null
+	git config "$1"
 }
 
 remove_configure user.name
