@@ -36,6 +36,11 @@ function path-var() {
 	normalize)
 		list dedup PATH
 		;;
+	load)
+		while IFS= read -r line; do
+			list add PATH "${line}"
+		done <"$OPDIR"
+		;;
 	*)
 		cat <<-'HELP' >&2
 			$PATH environment edit
@@ -43,6 +48,7 @@ function path-var() {
 			prepend:     path-var prepend
 			add:         path-var add ./resolve/to/absolte/path
 			add:         path-var add-rel ./always/relative/path
+			add file:    path-var load /path/to/file
 			delete:      path-var del /some/path
 			has:         path-var has /some/path
 			normalize:   path-var normalize
@@ -52,3 +58,14 @@ function path-var() {
 		;;
 	esac
 }
+
+if [[ -e /etc/profile.d/path-var.lst ]]; then
+	path-var load /etc/profile.d/path-var.lst
+else
+	touch /etc/profile.d/path-var.lst
+fi
+if [[ -e ~/.config/path-var.lst ]]; then
+	path-var load ~/.config/path-var.lst
+else
+	touch ~/.config/path-var.lst
+fi

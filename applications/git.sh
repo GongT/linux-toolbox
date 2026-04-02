@@ -18,14 +18,14 @@ emit_file alias/git.sh
 
 git_config_set() {
 	local location="$1" field="$2" value="$3"
-	git config "$location" set --all "$field" "$value"
+	git config set "$location" --all "$field" "$value"
 }
 git_config_unset() {
 	local location="$1" field="$2"
-	git config "$location" unset --all "$field"
+	git config unset "$location" --all "$field"
 }
 
-if version_gt 2.45.0 "$GIT_VERSION" ; then
+if version_gt 2.45.0 "$GIT_VERSION"; then
 	warning "git version is old"
 	git_config_set() {
 		local location="$1" field="$2" value="$3"
