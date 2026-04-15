@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+g!/usr/bin/bash
 
 # shellcheck disable=SC2155
 
@@ -135,8 +135,8 @@ stdin_scripts_processor() {
 
 				log "notify systemd ready"
 				PARENT_NOTIFIED=yes
-				systemd-notify --ready
-				unset NOTIFY_SOCKET
+				NOTIFY_SOCKET="$_NOTIFY_SOCKET" systemd-notify --ready
+				unset _NOTIFY_SOCKET
 			fi
 
 			# # use timeout+tail to faster disconnect detect, just use sleep is also ok
@@ -212,7 +212,7 @@ execute_main() {
 		exec /usr/bin/bash "$@"
 	fi
 	export VSCODE_AGENT_FOLDER
-	if [[ -n "${VSCODE_ALTERNATIVE-}" ]]; then
+	if [[ -n ${VSCODE_ALTERNATIVE-} ]]; then
 		log "VSCODE_ALTERNATIVE is '${VSCODE_ALTERNATIVE}'"
 		VSCODE_AGENT_FOLDER+="/Alternatives/${VSCODE_ALTERNATIVE}"
 	else
@@ -250,6 +250,9 @@ execute_main() {
 			die "missing NOTIFY_SOCKET"
 		fi
 		log "NOTIFY_SOCKET=${NOTIFY_SOCKET}"
+
+                export _NOTIFY_SOCKET="${NOTIFY_SOCKET}"
+                unset INVOCATION_ID NOTIFY_SOCKET MEMORY_PRESSURE_WATCH MEMORY_PRESSURE_WRITE
 	PREPARE
 
 	# 计算systemd-run参数，附带一些环境变量
@@ -270,7 +273,7 @@ execute_main() {
 
 	# 存放环境变量，交给子进程使用
 	{
-		export -p | grep -viE ' (USER|SHLVL|PWD|OLDPWD|_|MEMORY_PRESSURE_[A-Z_]+|INVOCATION_ID)='
+		export -p | grep -viE ' (USER|SHLVL|PWD|OLDPWD|_|MEMORY_PRESSURE_[A-Z_]+)='
 
 		echo "declare -r SESSION_ROOT_PID=$$"
 
@@ -310,7 +313,7 @@ execute_main() {
 	local SERVICE_NAME="vscode-remote-$RAND.service"
 	log "service: ${SERVICE_NAME}"
 	x() {
-		echo "+ $*">&2
+		echo "+ $*" >&2
 		"$@"
 	}
 	x exec "${SUDO[@]}" systemd-run \
