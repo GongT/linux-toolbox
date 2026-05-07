@@ -61,8 +61,9 @@ function path-var() {
 
 if [[ -e /etc/profile.d/path-var.lst ]]; then
 	path-var load /etc/profile.d/path-var.lst
-else
+elif [[ $EUID -eq 0 ]]; then
 	touch /etc/profile.d/path-var.lst
+	chmod 666 /etc/profile.d/path-var.lst
 fi
 if [[ -e ~/.config/path-var.lst ]]; then
 	path-var load ~/.config/path-var.lst
