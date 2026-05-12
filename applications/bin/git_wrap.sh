@@ -26,7 +26,7 @@ export GIT_COMMITTER_NAME="${USER_DISPLAYNAME-}"
 export GIT_COMMITTER_EMAIL="${USER_EMAIL-}"
 
 ARGS=("$@")
-if [[ " $* " == *' commit '* ]]; then
+if [[ " $* " == *' commit '* ]] || [[ " $* " == *' version '* ]] || [[ " $* " == *' --version '* ]]; then
 	if [[ -z ${GIT_AUTHOR_NAME-} ]] || [[ -z ${GIT_AUTHOR_EMAIL-} ]] && ! has_user_and_email; then
 		if [[ -z ${DISPLAY-} && -z ${SSH_CONNECTION-} && ${TERM-} == 'linux' ]]; then
 			alert_en
