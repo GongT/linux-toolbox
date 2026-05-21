@@ -124,6 +124,9 @@ stdin_scripts_processor() {
 			local T=$1
 			log "sleep ${T}"
 			if [[ $T == *'.'* ]] || [[ $T -lt 30 ]]; then
+				if [[ $T == '.'* ]]; then
+					T=1
+				fi
 				"${SLEEP_BIN}" "$T"
 				return
 			fi
