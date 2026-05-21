@@ -1,4 +1,4 @@
-g!/usr/bin/bash
+#!/usr/bin/bash
 
 # shellcheck disable=SC2155
 
@@ -106,50 +106,65 @@ stdin_scripts_processor() {
 	fi
 
 	### 替换 sleep 命令
-	# vscode安装脚本首先会下载一个cli，此cli会启动实际的服务器程序
-	# 此时脚本用sleep等待服务器程序启动（下载）；以及其他一些东西，该等待时间为0.x~3秒，这种情况直接调用sleep
+	# 当useExecServer=true时:
+	# * vscode安装脚本首先会下载一个cli，此cli会启动实际的服务器程序
+	# * 此时脚本用sleep等待服务器程序启动（下载）；以及其他一些东西，该等待时间为0.x~3秒，这种情况直接调用sleep
+	# 当useExecServer=false时:
+	# * vscode安装脚本直接在当前shell安装服务器程序
+	#
 	# 一切准备好后，脚本会进入一个死循环，每次等待180秒并随便输出，以此判断连接是否断开
 	# 但由于用systemd另外启动的server，断开连接不会导致“随便输出”出错，也就不能判断连接情况
-	# 用判断父进程PID是否还在来实现相同功能
-	# UPDATE:
-	# 经过测试，useLocalServer的时候：
-	#     对于首个连接即使ssh结束也不能退出
-	#     对于其他连接则应该退出
+	# 用判断父进程PID是否还在来实现相同功能（并不稳定）
+	#
 	# 实际不应该判断父进程，而是子进程（vscode server）是否还在
 	cat <<-'EOF'
 		SLEEP_BIN=$(command -v sleep)
 		PARENT_NOTIFIED=''
 		log "replacing sleep $SLEEP_BIN with function"
+		_parent_notify() {
+			if [[ ! "${PARENT_NOTIFIED-}" ]]; then
+				log "notify systemd ready"
+				PARENT_NOTIFIED=yes
+				NOTIFY_SOCKET="$_NOTIFY_SOCKET" systemd-notify --ready
+				unset _NOTIFY_SOCKET
+			fi
+		}
+
 		sleep() {
 			local T=$1
 			log "sleep ${T}"
 			if [[ $T == *'.'* ]] || [[ $T -lt 30 ]]; then
 				if [[ $T == '.'* ]]; then
 					T=1
+					log "  - modify timeout to 1s"
 				fi
 				"${SLEEP_BIN}" "$T"
+
+				# TODO: 这里不正确，应该无论如何都运行到下方的 wait long 才对，但不知道为什么 180 秒的等待没执行，而是直接把main函数return了
+				if [[ "${USING_EXEC_SERVER-}" != "1" ]]; then
+					log "not using exec server, notify now."
+					_parent_notify
+				fi 
+
 				return
 			fi
 			# wait long, server is (hopefully) stable
-			if [[ ! "${PARENT_NOTIFIED-}" ]]; then
-				if ! [[ "${CLI_PID-}" ]]; then
-					die "protocol changed: missing CLI_PID"
+			_parent_notify
+
+			if [[ "${USING_EXEC_SERVER-}" != "1" ]]; then
+				"${SLEEP_BIN}" "$T"
+			elif [[ "${CLI_PID-}" ]]; then
+				# use timeout+tail to faster disconnect detect, just use sleep is also ok
+				timeout "$T" tail "--pid=$CLI_PID" -f /dev/null &>/dev/null || true
+
+				if ! kill -0 "$CLI_PID" >/dev/null 2>&1; then
+					log "vscode server $CLI_PID is gone"
+
+					# this shell is leader of systemd-run, quit will cleanup everything
+					exit 0
 				fi
-
-				log "notify systemd ready"
-				PARENT_NOTIFIED=yes
-				NOTIFY_SOCKET="$_NOTIFY_SOCKET" systemd-notify --ready
-				unset _NOTIFY_SOCKET
-			fi
-
-			# # use timeout+tail to faster disconnect detect, just use sleep is also ok
-			timeout "$T" tail "--pid=$CLI_PID" -f /dev/null &>/dev/null || true
-
-			if ! kill -0 "$CLI_PID" >/dev/null 2>&1; then
-				log "vscode server $CLI_PID is gone"
-
-				# this shell is leader of systemd-run, quit will cleanup everything
-				exit 0
+			else
+				die "protocol changed: missing CLI_PID"
 			fi
 		}
 	EOF
@@ -172,14 +187,25 @@ stdin_scripts_processor() {
 	MODIFY_REG+="$(__replace_re HTTPS_PROXY_INPUT "${HTTPS_PROXY_INPUT}");"
 
 	### 标准输入的脚本来自vscode客户端，通过ssh输入过来，原本会直接bash执行
+	FOUND_USING_EXEC_SERVER=0
 	while read -r LINE; do
 		# 正则替换脚本中的变量赋值，然后记录到临时文件
 		STMT=$(echo "${LINE}" | sed --unbuffered -E "${MODIFY_REG}")
 		echo "${STMT}"
 
+
+		# 只有 useExecServer=true 的时候才会有 execServerToken 这个语句，以此判断并记录到脚本中（供sleep使用）
+		if [[ "$FOUND_USING_EXEC_SERVER" == '0' ]] && [[ "${STMT}" == *"execServerToken"* ]]; then
+			log "found 'useExecServer' is true!"
+			FOUND_USING_EXEC_SERVER=1
+			echo "declare -r USING_EXEC_SERVER=1"
+		fi
+
 		if [[ ${LINE} == "mainScriptWrapper" ]]; then
 			# 看到主函数的实际调用！
 			log "main call is detected!"
+			echo "log 'mainScriptWrapper has returned, this is strange and should not happen'"
+			echo "sleep infinity"
 			return 0
 		fi
 	done
@@ -213,6 +239,9 @@ execute_main() {
 	if [[ -z ${VSCODE_AGENT_FOLDER-} ]]; then
 		log "no VSCODE_AGENT_FOLDER on this machine, skip alternative shell..."
 		exec /usr/bin/bash "$@"
+	fi
+	if [[ "$VSCODE_AGENT_FOLDER" == *"/" ]]; then
+		VSCODE_AGENT_FOLDER=${VSCODE_AGENT_FOLDER%/}
 	fi
 	export VSCODE_AGENT_FOLDER
 	if [[ -n ${VSCODE_ALTERNATIVE-} ]]; then
@@ -254,8 +283,8 @@ execute_main() {
 		fi
 		log "NOTIFY_SOCKET=${NOTIFY_SOCKET}"
 
-                export _NOTIFY_SOCKET="${NOTIFY_SOCKET}"
-                unset INVOCATION_ID NOTIFY_SOCKET MEMORY_PRESSURE_WATCH MEMORY_PRESSURE_WRITE
+		export _NOTIFY_SOCKET="${NOTIFY_SOCKET}"
+		unset INVOCATION_ID NOTIFY_SOCKET MEMORY_PRESSURE_WATCH MEMORY_PRESSURE_WRITE
 	PREPARE
 
 	# 计算systemd-run参数，附带一些环境变量
@@ -333,6 +362,7 @@ execute_main() {
 		"--property=StandardInput=file:${TMPF}" \
 		"--property=StandardOutput=append:${PASS_STDOUT}" \
 		"--property=StandardError=append:${PASS_STDERR}" \
+		"--property=TimeoutStartSec=1min" \
 		"--property=OOMPolicy=stop" \
 		"--property=OOMScoreAdjust=200" \
 		"--property=Nice=15" \
