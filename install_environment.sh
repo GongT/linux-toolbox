@@ -163,7 +163,7 @@ else
 	warning "shfmt not found, best to install it"
 fi
 
-write "try source it"
+debug "try source it"
 
 # shellcheck source=/dev/null
 source "${INSTALL_TARGET_FILE}" ||
@@ -172,4 +172,4 @@ source "${INSTALL_TARGET_FILE}" ||
 		die "can't start scripts, install failed."
 	}
 
-ok "install complete. start"
+printf "\n\e[38;5;2;7;1m  好 耶  \e[0m\n\n"
