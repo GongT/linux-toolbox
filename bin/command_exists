@@ -1,6 +1,6 @@
 #!/bin/bash
 function find_command() {
-	PATH="/usr/local/bin:/usr/bin" command -v "$@"
+	command -v "$@"
 }
 function command_exists() {
 	find_command "$1" &> /dev/null

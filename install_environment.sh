@@ -40,6 +40,9 @@ my_call file-section "$ENTRY_FILE" "MY LINUX TOOLBOX" "$ENTRY_CODE"
 export GEN_BIN_PATH="${MY_LIBEXEC}/bin"
 export GEN_HELPERS_PATH="${MY_LIBEXEC}/helpers"
 
+_ORIG_PATH="$PATH"
+list del _ORIG_PATH "${GEN_BIN_PATH}"
+
 writeln " * installing scripts into \e[38;5;14m${MY_LIBEXEC}\e[0m"
 writeln " * entrypoint is \e[38;5;14m${INSTALL_TARGET_FILE}\e[0m"
 filecopy_prepare
