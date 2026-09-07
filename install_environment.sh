@@ -159,6 +159,10 @@ install_script rc
 debug "removing comments"
 sed -Ei "/^\s*#.*$/d" "$INSTALL_TARGET_FILE"
 
+emit "
+path-var normalize
+"
+
 if command_exists shfmt; then
 	debug "reformat it with shfmt"
 	shfmt -s -ln=bash -bn -w "$INSTALL_TARGET_FILE"

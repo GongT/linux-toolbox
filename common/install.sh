@@ -25,7 +25,7 @@ emit_file "advance/machine-name.sh"
 if [[ $(systemd-detect-virt) == 'wsl' ]]; then
 	emit_file "advance/path.wsl.sh"
 fi
-emit 'path-var normalize
+emit '
 export PATH
 export EXECIGNORE
 '
