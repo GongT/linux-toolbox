@@ -25,7 +25,11 @@ function copy_bin() {
 
 	write_file_if_changed "$TARGET_FILE" "$CONTENT"
 
-	debug "create binary file: $TARGET_BASE - ${LAST_FILE_CHANGED}"
+	if [[ "${LAST_FILE_CHANGED-}" -eq 0 ]]; then
+		debug "binary file unchanged: $TARGET_BASE"
+	else
+		success "create binary file: $TARGET_BASE"
+	fi
 	INSTALLED_BINS+=("$TARGET_FILE")
 }
 

@@ -17,7 +17,7 @@ function find_exists_parent() {
 	echo "$FILE"
 }
 
-LAST_FILE_CHANGED=no
+LAST_FILE_CHANGED=0
 function write_file() {
 	local SUDO=no
 	if [[ $1 == --sudo ]]; then
@@ -45,7 +45,7 @@ function write_file() {
 		sudo mkdir -p "$(dirname "$FILE")"
 		printf "%s\n" "$CONTENT" | sudo tee "$FILE" >/dev/null
 	fi
-	LAST_FILE_CHANGED=yes
+	LAST_FILE_CHANGED=1
 }
 
 function write_file_if_changed() {
@@ -63,6 +63,6 @@ function write_file_if_changed() {
 	if [[ $CUR_CONTENT != "$CONTENT" ]]; then
 		write_file "${SUDO[@]}" "$FILE" "$CONTENT"
 	else
-		LAST_FILE_CHANGED=no
+		LAST_FILE_CHANGED=0
 	fi
 }
