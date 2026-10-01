@@ -7,6 +7,8 @@ cd "${MY_SCRIPT_ROOT}" || die "internal error: can't get script folder"
 declare -xr MY_SCRIPT_ROOT
 declare -x HERE="$MY_SCRIPT_ROOT"
 
+unset -f die
+source "./helpers/output.sh"
 source "./common/shared-library/include.sh"
 
 function pad() {

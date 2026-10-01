@@ -1,6 +1,47 @@
 INSTALLED_BINS=()
+function _env_process_bash() {
+	for ENV; do
+		printf 'export "%q"\n' "$ENV"
+	done
+}
+
+function _env_process_python() {
+	for ENV; do
+		printf '%s=%q\n' "${ENV%%=*}" "${ENV#*=}"
+	done
+}
+
+function _env_process_tk() {
+	for ENV; do
+		printf 'set env "%q" "%q"\n' "${ENV%%=*}" "${ENV#*=}"
+	done
+}
+
+function _get_env_process() {
+	case "$1" in
+	*.sh)
+		echo "_env_process_bash"
+		;;
+	*.py)
+		echo "_env_process_python"
+		;;
+	*.expect)
+		echo "_env_process_tk"
+		;;
+	*)
+		echo "_env_process_noop"
+		;;
+	esac
+}
+
+function _env_process_noop() {
+	if [[ $# -gt 0 ]]; then
+		die "Can't process environment variables: unknown script type."
+	fi
+}
+
 function copy_bin() {
-	local SOURCE_FILE="$1" TARGET_BASE TARGET_FILE CONTENT
+	local SOURCE_FILE="$1" TARGET_BASE TARGET_FILE CONTENT env_process
 	shift
 
 	if [[ $SOURCE_FILE != /* ]]; then
@@ -8,24 +49,31 @@ function copy_bin() {
 	fi
 
 	if [[ $# -eq 0 ]]; then
-		TARGET_BASE=$(basename "$SOURCE_FILE" .sh)
+		if [[ $SOURCE_FILE == *.sh ]]; then
+			TARGET_BASE=$(basename "$SOURCE_FILE" .sh)
+		elif [[ $SOURCE_FILE == *.py ]]; then
+			TARGET_BASE=$(basename "$SOURCE_FILE" .py)
+		elif [[ $SOURCE_FILE == *.expect ]]; then
+			TARGET_BASE=$(basename "$SOURCE_FILE" .expect)
+		else
+			TARGET_BASE=$(basename "$SOURCE_FILE")
+		fi
 	else
 		TARGET_BASE="$1"
 		shift
 	fi
 	TARGET_FILE="${GEN_BIN_PATH}/$TARGET_BASE"
 
+	env_process="$(_get_env_process "$SOURCE_FILE")"
 	CONTENT=$(
 		head -n 1 "$SOURCE_FILE"
-		for ENV; do
-			printf 'export "%q"\n' "$ENV"
-		done
+		"$env_process" "$@"
 		tail -n +2 "$SOURCE_FILE"
 	)
 
 	write_file_if_changed "$TARGET_FILE" "$CONTENT"
 
-	if [[ "${LAST_FILE_CHANGED-}" -eq 0 ]]; then
+	if [[ ${LAST_FILE_CHANGED-} -eq 0 ]]; then
 		debug "binary file unchanged: $TARGET_BASE"
 	else
 		success "create binary file: $TARGET_BASE"
@@ -34,18 +82,17 @@ function copy_bin() {
 }
 
 function copy_library() {
-	local SOURCE_FILE="$1" TARGET_BASE TARGET_FILE CONTENT
+	local SOURCE_FILE="$1" TARGET_BASE TARGET_FILE CONTENT env_process
 	shift
 
 	if [[ $SOURCE_FILE != /* ]]; then
 		SOURCE_FILE="${HERE}/${SOURCE_FILE}"
 	fi
 
+	env_process="$(_get_env_process "$SOURCE_FILE")"
 	CONTENT=$(
 		head -n 1 "$SOURCE_FILE"
-		for ENV; do
-			printf 'export "%q"\n' "$ENV"
-		done
+		"$env_process" "$@"
 		tail -n +2 "$SOURCE_FILE"
 	)
 
@@ -83,12 +130,15 @@ function filecopy_post_install() {
 
 	warning "remove stale binary files..."
 	indent
+	local -i CNT=0
 	for FILE in "${FILES[@]}"; do
 		if ! array_contains "$FILE" "${INSTALLED_BINS[@]}"; then
 			debug " - $FILE"
 			"${_SUDO[@]}" unlink "$FILE"
+			((CNT++))
 		fi
 	done
+	debug "removed $CNT stale binary files"
 	indent-
 
 	debug "make binaries executable"
@@ -101,13 +151,13 @@ function my_call() {
 }
 
 array_contains() {
-    local seeking="$1"
-    local in=1
-    for element in "${@:2}"; do
-        if [[ "$element" == "$seeking" ]]; then
-            in=0
-            break
-        fi
-    done
-    return "$in"
+	local seeking="$1"
+	local in=1
+	for element in "${@:2}"; do
+		if [[ $element == "$seeking" ]]; then
+			in=0
+			break
+		fi
+	done
+	return "$in"
 }

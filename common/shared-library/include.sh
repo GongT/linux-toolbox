@@ -16,7 +16,6 @@ else
 fi
 
 source "${_DIR}/install-only/copy.sh"
-source "${_DIR}/install-only/debug-output.sh"
 source "${_DIR}/install-only/emit.sh"
 source "${_DIR}/install-only/migrate.sh"
 
