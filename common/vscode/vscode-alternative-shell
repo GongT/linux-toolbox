@@ -107,12 +107,27 @@ inject_script_before_main() {
 	EOF
 
 	_check_user_alive() {
+		# 此函数导出到子进程，返回0时sleep将继续运行，返回非0时sleep将退出（进而退出整个vscode-server）
 		local SLICE_NAME="vscode-${COMMIT_ID}.slice"
-		local LIST
-		LIST=$(systemctl show --property=RequiredBy --value "$SLICE_NAME")
+		local -a SRVICE_LIST
+		# 获取所有依赖于此 slice 的 vscode-await-xxx 列表
+		mapfile -t SRVICE_LIST < <(systemctl show --property=RequiredBy --value "$SLICE_NAME" | tr ' ' '\n' | grep '^vscode-await-')
+		log "检查依赖数量: ${#SRVICE_LIST[@]}"
 
-		# 如果有 vscode-await-xxx.service 存在，则说明还有人使用此server，返回0使sleep继续等待
-		[[ " $LIST " == *"vscode-await-"* ]]
+		if [[ ${#SRVICE_LIST[@]} -eq 0 ]]; then
+			# 如果没有任何依赖于此 slice 的 vscode-await-xxx ，这应该不会发生
+			log "异常: 没有任何依赖"
+			return 1
+		fi
+		# 如果这些服务还在运行，则说明还有人使用此server
+		# 如果还在运行，systemctl is-active --quiet 将返回0
+		if systemctl is-active --quiet -- "${SRVICE_LIST[@]}"; then
+			log "  - 仍在运行"
+			return 0
+		else
+			log "  - 未运行，sleep将退出"
+			return 1
+		fi
 	}
 	_parent_notify() {
 		if [[ ! ${PARENT_NOTIFIED-} ]]; then
@@ -122,7 +137,9 @@ inject_script_before_main() {
 			unset _NOTIFY_SOCKET
 		fi
 	}
+
 	sleep() {
+		# 此函数导出到子进程
 		local T=$1
 		log "sleep ${T}"
 		if [[ $T == *'.'* ]] || [[ $T -lt 30 ]]; then
@@ -131,20 +148,11 @@ inject_script_before_main() {
 				log "  - 强制至少休眠 1s"
 			fi
 			"${SLEEP_BIN}" "$T"
-
-			# TODO: 这里不正确，应该无论如何都运行到下方的 wait long 才对，但不知道为什么 180 秒的等待没执行，而是直接把main函数return了
-			if [[ ${USING_EXEC_SERVER-} != "1" ]]; then
-				log "not using exec server, notify now."
-				_parent_notify
-			fi
-
-			return
 		fi
-		# wait long, server is (hopefully) stable
-		_parent_notify
 
 		if [[ ${USING_EXEC_SERVER-} != "1" ]]; then
 			# 不是使用 exec server（每个远程窗口独立启动一个）需要想办法，但这种情况目前没用到，暂时不管
+			log "未使用 exec server！！！"
 			"${SLEEP_BIN}" "$T"
 		elif [[ "${CLI_PID-}" ]]; then
 			if _check_user_alive; then
@@ -153,10 +161,16 @@ inject_script_before_main() {
 			else
 				# 如果无人使用，则退出
 				# 此shell是systemd-run启动的leader，这会导致systemd自动清理所有内容
+				log "无人使用此server，退出"
 				exit 0
 			fi
 		else
 			die "vscode remote内部变化: 环境变量 CLI_PID 没有了"
+		fi
+
+		if [[ $T -lt 30 ]]; then
+			# wait long, server is (hopefully) stable
+			_parent_notify
 		fi
 	}
 	declare -f sleep _check_user_alive _parent_notify
@@ -213,13 +227,23 @@ stdin_scripts_processor() {
 	while read -r LINE; do
 		# 正则替换脚本中的变量赋值，然后记录到临时文件
 		STMT=$(echo "${LINE}" | sed --unbuffered -E "${MODIFY_REG}")
-		echo "${STMT}"
+
+		if [[ ${STMT} == "mainScriptWrapper" ]]; then
+			log "看到主函数的实际调用！"
+
+			echo "declare -xr USING_EXEC_SERVER=$FOUND_USING_EXEC_SERVER"
+			echo "${STMT}"
+			echo "log 'mainScriptWrapper 居然返回了？！这不可能'"
+			echo "sleep infinity"
+			return 0
+		fi
+
+		echo "${STMT}" ########################
 
 		# 只有 useExecServer=true 的时候才会有 execServerToken 这个语句，以此判断并记录到脚本中（供sleep使用）
 		if [[ $FOUND_USING_EXEC_SERVER == '0' ]] && [[ ${STMT} == *"execServerToken"* ]]; then
 			log "发现配置 'useExecServer' 为 true"
 			FOUND_USING_EXEC_SERVER=1
-			echo "declare -r USING_EXEC_SERVER=1"
 		fi
 		if [[ $FOUND_COMMIT_ID == '' ]] && [[ ${STMT} == "COMMIT_ID="* ]]; then
 			FOUND_COMMIT_ID=$(echo "${STMT}" | sed -E 's/^COMMIT_ID="//; s/"$//')
@@ -227,12 +251,6 @@ stdin_scripts_processor() {
 			export FOUND_COMMIT_ID
 		fi
 
-		if [[ ${LINE} == "mainScriptWrapper" ]]; then
-			log "看到主函数的实际调用！"
-			echo "log 'mainScriptWrapper 居然返回了？！这不可能'"
-			echo "sleep infinity"
-			return 0
-		fi
 	done
 
 	die "protocol changed: missing main function call"
@@ -288,10 +306,11 @@ execute_main() {
 	export VSC_TMP
 
 	S_ID=${XDG_SESSION_ID-}
-	if [[ -z ${XDG_SESSION_ID-} ]]; then
+	if [[ -z ${S_ID} ]]; then
 		S_ID=${RANDOM}
 	fi
 	export S_ID
+	local SERVICE_NAME="vscode-remote-$S_ID.service"
 
 	# 用于接收标准输入脚本
 	local -r TMPF="${VSC_TMP}/install-script.${S_ID}.sh"
@@ -314,18 +333,21 @@ execute_main() {
 
 	# 计算systemd-run参数，附带一些环境变量
 	local SYSTEMD_RUN_ARGS=()
-	local -a SYSTEMD_RUN_CMD
+	local -a SYSTEMD_RUN_CMD JOURNALCTL_RUN_CMD
 	if [[ $(id -u) -eq 0 ]]; then
 		log "running as root"
 		SYSTEMD_RUN_CMD=(systemd-run --system)
+		JOURNALCTL_RUN_CMD=(journalctl --system)
 	elif [[ ${VSCODE_AS_USER:-} != yes ]]; then
 		log "running as user, using sudo [VSCODE_AS_USER=${VSCODE_AS_USER:-}]"
 		SYSTEMD_RUN_CMD=(sudo systemd-run --system)
+		JOURNALCTL_RUN_CMD=(journalctl --system)
 		declare -x HOME=/root
-		unset DBUS_SESSION_BUS_ADDRESS XDG_SESSION_ID XDG_RUNTIME_DIR
 	else
+		unset DBUS_SESSION_BUS_ADDRESS XDG_SESSION_ID XDG_RUNTIME_DIR
 		log "running as user, using --user session [VSCODE_AS_USER=${VSCODE_AS_USER:-}]"
 		SYSTEMD_RUN_CMD=(systemd-run --user)
+		JOURNALCTL_RUN_CMD=(journalctl --user)
 	fi
 
 	# 父进程PID，实际就是sshd-session
@@ -362,49 +384,54 @@ execute_main() {
 		touch /tmp/vscode-skip-server-requirements-check
 	fi
 
-	# 创建两个fifo文件，用于把vscode-cli的输出传递给远程客户端
-	local PASS_STDOUT="${VSC_TMP}/.stdout.${S_ID}.fifo"
-	local PASS_STDERR="${VSC_TMP}/.stderr.${S_ID}.fifo"
-	mkfifo --mode 0777 "${PASS_STDOUT}" "${PASS_STDERR}"
-
-	local CAT_PS1 CAT_PS2
-	cat "${PASS_STDERR}" >&2 &
-	CAT_PS1=$!
-	cat "${PASS_STDOUT}" &
-	CAT_PS2=$!
-
 	x() {
-		echo "+ $*" >&2
+		local MSG=$(
+			local ARG
+			printf "+"
+			for ARG; do
+				if [[ $(printf '%q' "$ARG") == "$ARG" ]]; then
+					printf ' %s' "$ARG"
+				else
+					printf ' "%s"' "$ARG"
+				fi
+			done
+		)
+
+		echo "$MSG" >&2
 		"$@"
 	}
 
 	# shared
 	SHARED_ARGS=(
-		--collect
-		"--slice=vscode-${FOUND_COMMIT_ID}.slice"
 		"--working-directory=$VSC_TMP"
+		--collect --quiet "--slice=vscode-${FOUND_COMMIT_ID}.slice"
 	)
 
-	# 启动一个进程，当父进程（即sshd-session）退出时，关闭辅助进程
+	local HELPER_NAME="vscode-await-${SESSION_ROOT_PID}"
+
+	# 工具服务: 启动一个进程，当父进程（即sshd-session）退出时，关闭辅助进程
 	# 并且要用systemd-run的方式启动，并加入 vscode-xxx.slice，随后可以通过查询此slice有几个这种tools进程来判断是否还有用户
-	local HELPER_NAME="vscode-await-${SESSION_ROOT_PID}.service"
-	SESSION_TOOL_ARGS=(
-		"--unit=${HELPER_NAME}"
-	)
-	if [[ -n $XDG_RUNTIME_DIR ]]; then
-		SESSION_TOOL_ARGS+=("--property=ExecStopPost=-$(command -v loginctl) terminate-session $XDG_SESSION_ID")
-	else
-		SESSION_TOOL_ARGS+=("--property=ExecStopPost=-$(command -v kill) -9 $CAT_PS1 $CAT_PS2")
-	fi
-	SESSION_TOOL_ARGS+=("--property=ExecStopPost=-$(command -v rm) ${PASS_STDOUT} ${PASS_STDERR} ${TMPF}")
-
-	log "工具服务: ${HELPER_NAME}"
+	log "工具服务: ${HELPER_NAME}.scope"
 	x "${SYSTEMD_RUN_CMD[@]}" \
+		--scope \
 		"${SHARED_ARGS[@]}" \
-		"${SESSION_TOOL_ARGS[@]}" \
-		tail "--pid=$SESSION_ROOT_PID" -f /dev/null
+		"--unit=${HELPER_NAME}.scope" \
+		tail "--pid=$SESSION_ROOT_PID" -f /dev/null &
 
-	local SERVICE_NAME="vscode-remote-$S_ID.service"
+	log "输出桥接服务: ${HELPER_NAME}-stdio.scope"
+	x "${SYSTEMD_RUN_CMD[@]}" \
+		--scope \
+		"${SHARED_ARGS[@]}" \
+		"--unit=${HELPER_NAME}-stdio.scope" \
+		"${JOURNALCTL_RUN_CMD[@]}" \
+		--follow \
+		"--unit=$SERVICE_NAME" \
+		--output=cat \
+		--no-tail \
+		--invocation=0 &
+
+	# 启动主服务，它的输出（包括stderr）将被记录到journal中，同时发送回SSH客户端
+	# 无法使用 --pipe，所以加了一个桥接过程
 	log "主服务: ${SERVICE_NAME}"
 	x exec "${SYSTEMD_RUN_CMD[@]}" \
 		"${SHARED_ARGS[@]}" \
@@ -414,8 +441,9 @@ execute_main() {
 		"--property=Description=Visual Studio Code Remote @ $S_ID" \
 		"${SYSTEMD_RUN_ARGS[@]}" \
 		"--property=StandardInput=file:${TMPF}" \
-		"--property=StandardOutput=append:${PASS_STDOUT}" \
-		"--property=StandardError=append:${PASS_STDERR}" \
+		"--property=ExecStopPost=-/usr/bin/rm ${TMPF}" \
+		"--property=StandardOutput=journal+console" \
+		"--property=StandardError=journal+console" \
 		"--property=TimeoutStartSec=1min" \
 		"--property=OOMPolicy=stop" \
 		"--property=OOMScoreAdjust=200" \
