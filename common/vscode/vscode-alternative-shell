@@ -427,7 +427,7 @@ execute_main() {
 		--follow \
 		"--unit=$SERVICE_NAME" \
 		--output=cat \
-		--no-tail \
+		--lines=all \
 		--invocation=0 &
 
 	# 启动主服务，它的输出（包括stderr）将被记录到journal中，同时发送回SSH客户端
